@@ -1,0 +1,20 @@
+# According to this convention :
+# https://wiki.alice-bob.com/e/en/process/nanofab_design_review
+# 
+---
+width: 10mm
+length: 10mm
+ports:
+   RF:
+      cpw_width: 680um
+      cpw_gap: 240um
+      locations:
+         - [[0, -5mm], 90]
+         - [[0, +5mm], -90]
+marker:
+   bond:
+      dim: 250e-6
+      loc:
+         - [1.75e-3, 0.25e-3]
+         - [8.2e-3, 9.75e-3]
+numbering: 1
