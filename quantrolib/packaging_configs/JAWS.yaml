@@ -16,17 +16,18 @@ ports:
          - [[3.2mm, 4.75mm], -90]
          - [[5.25mm, 3.2mm], 180]
          - [[3.2mm, -4.75mm], 90]
-   DC:
-      cpw_dimensions: [300um, 210um] # track, gap
-      locations:
-         - [[-0.75mm, 4.75mm], -90] # pos, ori
-         - [[-5.25mm, -0.75mm], 0]
-         - [[-5.25mm, -2.5mm], 0] 
-         - [[-0.75mm, -4.75mm], 90] 
-         - [[0.75mm, -4.75mm], 90] 
-         - [[5.25mm, -2.5mm], 180]
-         - [[5.25mm, -0.75mm], 180]
-         - [[0.75mm, 4.75mm], -90]
+   # DC PORTS ARE NOT YET IMPLEMENTED
+   # DC:
+   #    cpw_dimensions: [300um, 210um] # track, gap
+   #    locations:
+   #       - [[-0.75mm, 4.75mm], -90] # pos, ori
+   #       - [[-5.25mm, -0.75mm], 0]
+   #       - [[-5.25mm, -2.5mm], 0] 
+   #       - [[-0.75mm, -4.75mm], 90] 
+   #       - [[0.75mm, -4.75mm], 90] 
+   #       - [[5.25mm, -2.5mm], 180]
+   #       - [[5.25mm, -0.75mm], 180]
+   #       - [[0.75mm, 4.75mm], -90]
 marker:
    bond:
       dim: 250e-6
