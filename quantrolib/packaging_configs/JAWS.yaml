@@ -2,9 +2,8 @@
 # https://wiki.alice-bob.com/e/en/process/nanofab_design_review
 # x_dim should be greater than y_dim
 ---
-dimensions:
-   width: 10.5mm
-   length: 9.5mm
+width: 10.5mm
+length: 9.5mm
 ports:
    RF:
       cpw_width: 540um
