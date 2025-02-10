@@ -52,6 +52,17 @@ if TYPE_CHECKING:
     import matplotlib
 
 
+def is_quantrolib(design: Any) -> bool:
+    """Check if the design is a Quantrolib design.
+
+    Args:
+        design (Any): The design to check.
+
+    Returns:
+        bool: True if the design is a Quantrolib design.
+    """
+    return design.__module__.startswith('quantrolib')
+
 class QComponent():
     """`QComponent` is the core class for all Metal components and is the
     central construct from which all components in Metal are derived.
@@ -189,6 +200,9 @@ class QComponent():
 
         # Status: used to handle building of a component and checking if it succeeded or failed.
         self.status = 'Not Built'
+        if is_quantrolib(design):
+            design = design._design
+
         if not is_design(design):
             raise ValueError(
                 "Error you did not pass in a valid Metal QDesign object as a '\
