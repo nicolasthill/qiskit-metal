@@ -18,8 +18,8 @@ class Resonator(Component):
         nanowire_width="10um",  # Width of the nano-wire
         nanowire_length="100um",  # Length of the nano-wire
         nanowire_gap_width="50um",  # ground gap from the nano-wire
-        cpw_width='32um',           # Width of the CPW track at the pin
-        cpw_gap='4um',              # Gap of the CPW track at the pin
+        cpw_width='10um',           # Width of the CPW track at the pin
+        cpw_gap='6um',              # Gap of the CPW track at the pin
     )
 
     component_metadata = Dict(

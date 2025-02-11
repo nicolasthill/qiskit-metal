@@ -13,8 +13,8 @@ class Launcher(Component):
         pad_length="540um",  # Length of the launcher pad
         ground_gap="240um",  # Ground gap surrounding the launcher pad
         adapter_length="560um",  # Length of the adapter from the pad to the CPW pin
-        cpw_width="32um",  # Width of the CPW track at the pin
-        cpw_gap="4um",  # Gap of the CPW track at the pin
+        cpw_width="10um",  # Width of the CPW track at the pin
+        cpw_gap="6um",  # Gap of the CPW track at the pin
     )
 
     component_metadata = Dict(

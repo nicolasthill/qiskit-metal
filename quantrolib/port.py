@@ -45,8 +45,8 @@ class Port:
         position: List[float],
         direction: float,
         name: str = "",
-        width: float = "32um",
-        gap: float = "4um",
+        width: float = "10um",
+        gap: float = "6um",
     ) -> None:
         """Create a port.
         Parameters
