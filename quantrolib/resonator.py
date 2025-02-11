@@ -1,6 +1,9 @@
 from typing import Tuple, List
 
+import numpy as np
+
 from quantrolib.base import Component, Geometry
+from quantrolib.port import Port
 from qiskit_metal import draw, Dict
 
 
@@ -15,8 +18,8 @@ class Resonator(Component):
         nanowire_width="10um",  # Width of the nano-wire
         nanowire_length="100um",  # Length of the nano-wire
         nanowire_gap_width="50um",  # ground gap from the nano-wire
-        # cpw_width='32um',           # Width of the CPW track at the pin
-        # cpw_gap='4um',              # Gap of the CPW track at the pin
+        cpw_width='32um',           # Width of the CPW track at the pin
+        cpw_gap='4um',              # Gap of the CPW track at the pin
     )
 
     component_metadata = Dict(
@@ -31,6 +34,8 @@ class Resonator(Component):
         nanowire_width,
         nanowire_length,
         nanowire_gap_width,
+        cpw_width,
+        cpw_gap,
         **kwargs,
     ):
         """Generate the geometry for the wirebond resonator."""
@@ -103,6 +108,17 @@ class Resonator(Component):
             previous_point = point
 
         pad = Geometry("pad", pad)
+
+        # Add port for CPW connection
+        self.ports.add(
+            port=Port(
+                position=[0, pad_length / 2 + ground_gap],
+                direction=np.pi/2,
+                name="DC_probe",
+                width=cpw_width,
+                gap=cpw_gap,
+            ),
+        )
 
         return [pad, nanowire, ground_pad]
 
