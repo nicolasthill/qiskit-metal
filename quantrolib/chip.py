@@ -15,11 +15,11 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 from quantrolib.base import Design
+from quantrolib.component import Launcher
 from quantrolib.utilities import load_yaml
 
+
 from qiskit_metal.qlibrary.core import QComponent
-from qiskit_metal.qlibrary.terminations.launchpad_wb_coupled import \
-    LaunchpadWirebondCoupled
 
 log = logging.getLogger(__name__)
 
@@ -67,7 +67,7 @@ class Chip(Design):
             'layer_end': '2048',
             'size': {
                 'center_x': '0.0mm', 'center_y': '0.0mm', 'center_z': '0.0mm',
-                'size_x': self._config["width"], 'size_y': self._config["length"], 'size_z': '-750um',
+                'size_x': self._config["width"], 'size_y': self._config["length"],'size_z': '-750um',
                 'sample_holder_top': '890um', 'sample_holder_bottom': '1650um'
             }
         }
@@ -141,8 +141,8 @@ class Chip(Design):
             Defaults to 15um.
         """
         self._rf_ports.append(
-            LaunchpadWirebondCoupled(
-                design=self._design,
+            Launcher(
+                design=self,
                 name=f"rf_port_{len(self._rf_ports)}",
                 options=dict(
                     pos_x=position[0],

@@ -1,8 +1,12 @@
-from qiskit_metal import QComponent
+
 from qiskit_metal import draw, Dict
 
 
-class Launcher(QComponent):
+from quantrolib.base import Component, Geometry
+from quantrolib.port import Port
+
+
+class Launcher(Component):
     """A launcher component for wirebond connections to on-chip coplanar waveguides."""
 
     default_options = Dict(
@@ -20,57 +24,66 @@ class Launcher(QComponent):
         short_name='launcher',
     )
 
-    def make(self):
+    def __init__(self, design, *args, **kwargs):
+        super().__init__(design, *args, **kwargs)
+
+    def generate_geometries(
+        self, pad_width, pad_length, ground_gap, adapter_length, cpw_width, cpw_gap, **kwargs,
+    ):
         """Generate the geometry for the wirebond launcher."""
-        p = self.parse_options()
 
         # Create launcher pad
-        pad_width = p.pad_width
-        pad_length = p.pad_length
-        pad = draw.rectangle(pad_width, pad_length, 0, 0)
+        pad = Geometry(
+            name="pad", polygon=draw.rectangle(pad_length, pad_width, 0, 0),
+        )
 
-        pad_gap_width = p.pad_width + 2 * p.ground_gap
-        pad_gap_length = p.pad_length + p.ground_gap
-        pad_gap = draw.rectangle(pad_gap_width, pad_gap_length, 0, - p.ground_gap / 2)
+        pad_gap_width = pad_width + 2 * ground_gap
+        pad_gap_length = pad_length + ground_gap
+        pad_gap = Geometry(
+            name="pad_gap",
+            polygon=draw.rectangle(pad_gap_length, pad_gap_width, - ground_gap / 2, 0),
+        )
 
         # Create launcher pad to CPW adapter
-        adapter = draw.Polygon([
-            (pad_width/2, pad_length/2),
-            (-pad_width/2, pad_length/2),
-            (-p.cpw_width/2, pad_length/2 + p.adapter_length),
-            (p.cpw_width/2, pad_length/2 + p.adapter_length)
-        ])
-        adapter_gap = draw.Polygon([
-            (pad_gap_width/2, p.pad_length/2),
-            (-pad_gap_width/2, p.pad_length/2),
-            (-p.cpw_width/2 - p.cpw_gap, p.pad_length/2 + p.adapter_length),
-            (p.cpw_width/2 + p.cpw_gap, p.pad_length/2 + p.adapter_length)
-        ])
-
-        self.add_qgeometry('poly', {"pad": pad, "adapter": adapter})
-        self.add_qgeometry('poly', {"pad_gap": pad_gap, "adapter_gap": adapter_gap}, subtract=True)
-
-        # Add pin for CPW connection
-        pin_start = (0, p.pad_length/2 + p.adapter_length - p.cpw_width)
-        pin_end = (0, p.pad_length/2 + p.adapter_length)
-        pin_points = [pin_start, pin_end]
-        self.add_pin(
-            self.name,
-            pin_points,
-            input_as_norm=True,
-            width=p.cpw_width,
-            gap=p.cpw_gap,
+        adapter = Geometry(
+            name="adapter",
+            polygon=draw.Polygon([
+                (pad_length/2, pad_width/2),
+                (pad_length/2, -pad_width/2),
+                (pad_length/2 + adapter_length, -cpw_width/2),
+                (pad_length/2 + adapter_length, cpw_width/2)
+            ]),
         )
+        adapter_gap = Geometry(
+            name="adapter_gap",
+            polygon=draw.Polygon([
+                (pad_length/2, pad_gap_width/2),
+                (pad_length/2, -pad_gap_width/2, ),
+                (pad_length/2 + adapter_length, -cpw_width/2 - cpw_gap),
+                (pad_length/2 + adapter_length, cpw_width/2 + cpw_gap)
+            ]),
+        )
+
+        for negative in [pad_gap, adapter_gap]:
+            negative.options = {"subtract": True}
+
+        # Add port for CPW connection
+        self.ports.add(
+            port=Port(
+                position=[pad_length/2 + adapter_length, 0],
+                direction=0, name=self.name,
+                width=cpw_width,
+                gap=cpw_gap,
+            ),
+        )
+
+        return [pad, pad_gap, adapter, adapter_gap]
 
 
 if __name__ == "__main__":
-    import qiskit_metal as metal
-
+    from quantrolib.chip import JAWS
     from quantrolib.component import Launcher
 
-    design = metal.designs.DesignPlanar()
-    gui = metal.MetalGUI(design)
-
-    launcher = Launcher(design=design, name="example_launcher")
-    gui.rebuild()
-    gui.autoscale()
+    chip = JAWS()
+    launcher = Launcher(design=chip, name="example_launcher")
+    chip.draw()

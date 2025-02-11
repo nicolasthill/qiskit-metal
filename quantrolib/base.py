@@ -7,8 +7,6 @@ Design
 
 """
 
-import numpy as np
-
 from typing import Optional, List
 
 
@@ -16,6 +14,8 @@ from qiskit_metal import draw
 
 from qiskit_metal import MetalGUI, QComponent
 from qiskit_metal.designs import DesignPlanar
+
+from quantrolib.port import Ports
 
 
 class Design:
@@ -94,10 +94,14 @@ class Geometry:
 class Component(QComponent):
 
     def __init__(self, design: Design, *args, **kwargs):
-        super().__init__(design=design._design, *args, **kwargs)
+        super().__init__(design=design._design, *args, make=False, **kwargs)
+
+        self.ports: Ports = Ports()
 
     def make(self):
         p = self.parse_options()
+
+        # GEOMETRY
 
         geometries = self.generate_geometries(**p)
 
@@ -109,18 +113,13 @@ class Component(QComponent):
             # add to qgeometry
             geometry.add_to_(component=self)
 
-        print(self.pins)
+        # PORTS
 
-        # Move pins
-        for pin in self.pins.items():
-            pin[1]["points"] = self.move_pin(
-                pin=pin,
-                pos_x=p.pos_x,
-                pos_y=p.pos_y,
-                orientation=p.orientation,
-            )
+        # rotate and translate
+        self.ports.transform(position=[p.pos_x, p.pos_y], rotation=p.orientation)
 
-        print(self.pins)
+        # add ports as pins
+        self.ports.add_as_pins(self)
 
     def move(self, geometry: Geometry, pos_x: float, pos_y: float, orientation: float) -> Geometry:
         return Geometry(
@@ -131,32 +130,6 @@ class Component(QComponent):
                 ), xoff=pos_x, yoff=pos_y,
             )
         )
-
-    def move_pin(self, pin,  pos_x: float, pos_y: float, orientation: float):
-        pin_start, pin_end = pin[1]["points"]
-        moved_pin_points = [
-            self.move_point(
-                point=pin_start,
-                pos_x=pos_x,
-                pos_y=pos_y,
-                orientation=orientation
-            ),
-            self.move_point(
-                point=pin_end,
-                pos_x=pos_x,
-                pos_y=pos_y,
-                orientation=orientation
-            )
-        ]
-        return moved_pin_points
-
-    def move_point(self, point: tuple, pos_x: float, pos_y: float, orientation: float) -> tuple:
-        moved_point = draw.translate(
-            draw.rotate(
-                draw.Point(*point), angle=orientation, origin=[0, 0]
-            ), xoff=pos_x, yoff=pos_y,
-        )
-        return np.array([moved_point.x, moved_point.y])
 
     def generate_geometries(self, **kwargs) -> List[Geometry]:
         raise NotImplementedError("generate_geometries must be implemented in subclass.")
