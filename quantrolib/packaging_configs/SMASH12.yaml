@@ -6,26 +6,26 @@ width: 10mm
 length: 10mm
 ports:
    RF:
-      cpw_width: 680um
-      cpw_gap: 240um
+      cpw_width: 32um
+      cpw_gap: 4um
       locations:
-         - [[-5mm, 0], 0] # 1 pos, ori
-         - [[-5mm, 2.121mm], 0] # 2 pos, ori
+         - [[-5mm, 0], 0]        # pos, ori
+         - [[-5mm, 2.121mm], 0]
 
-         - [[-3.879mm, 5mm], -90] # 3 pos, ori
-         - [[0, 5mm], -90] # 4 pos, ori
+         - [[-3.879mm, 5mm], -90]
+         - [[0, 5mm], -90]
 
-         - [[-5mm, -3.879mm], 0] # 5 pos, ori
-         - [[2.121mm, 5mm], -90] # 6 pos, ori
+         - [[-5mm, -3.879mm], 0]
+         - [[2.121mm, 5mm], -90]
 
-         - [[-3.879mm, -5mm], 90] # 7 pos, ori
-         - [[5mm, 2.121mm], 180] # 8 pos, ori
+         - [[-3.879mm, -5mm], 90]
+         - [[5mm, 2.121mm], 180]
 
-         - [[0, -5mm], 90] # 9 pos, ori
-         - [[2.121mm, -5mm], 90] # 10 pos, ori
+         - [[0, -5mm], 90]
+         - [[2.121mm, -5mm], 90]
 
-         - [[5mm, -3.879mm], 180] # 11 pos, ori
-         - [[5mm, 0], 180] # 12 pos, ori
+         - [[5mm, -3.879mm], 180]
+         - [[5mm, 0], 180]
 marker:
    bond:
       dim: 250e-6

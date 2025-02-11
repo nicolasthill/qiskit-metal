@@ -6,8 +6,8 @@ width: 10.5mm
 length: 9.5mm
 ports:
    RF:
-      cpw_width: 540um
-      cpw_gap: 210um
+      cpw_width: 32um
+      cpw_gap: 2um
       locations:
          - [[-3.2mm, -4.75mm], 90] # pos, ori
          - [[-5.25mm, 3.2mm], 0] 
