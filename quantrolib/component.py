@@ -81,9 +81,14 @@ class Launcher(Component):
 
 
 if __name__ == "__main__":
+    import time
+
     from quantrolib.chip import JAWS
-    from quantrolib.component import Launcher
+    from quantrolib.component import Launcher  # noqa: F811
 
     chip = JAWS()
+
     launcher = Launcher(design=chip, name="example_launcher")
+
     chip.draw()
+    time.sleep(1)  # such that the script waits until closing the GUI
