@@ -62,14 +62,19 @@ class Chip(Design):
 
         # chip characteristics
         self._design.chips.main = {
-            'material': 'silicon',
-            'layer_start': '0',
-            'layer_end': '2048',
-            'size': {
-                'center_x': '0.0mm', 'center_y': '0.0mm', 'center_z': '0.0mm',
-                'size_x': self._config["width"], 'size_y': self._config["length"],'size_z': '-750um',
-                'sample_holder_top': '890um', 'sample_holder_bottom': '1650um'
-            }
+            "material": "silicon",
+            "layer_start": "0",
+            "layer_end": "2048",
+            "size": {
+                "center_x": "0.0mm",
+                "center_y": "0.0mm",
+                "center_z": "0.0mm",
+                "size_x": self._config["width"],
+                "size_y": self._config["length"],
+                "size_z": "-750um",
+                "sample_holder_top": "890um",
+                "sample_holder_bottom": "1650um",
+            },
         }
 
         # add RF ports
@@ -112,8 +117,8 @@ class Chip(Design):
 
     def _add_rf_port(
         self,
-        position: Tuple[str | float] = [0., 0.],
-        orientation: float = 0.,
+        position: Tuple[str | float] = [0.0, 0.0],
+        orientation: float = 0.0,
         lead_length: Optional[str] = "0um",
         cpw_gap: Optional[str] = "9um",
         cpw_width: Optional[str] = "15um",
@@ -151,7 +156,7 @@ class Chip(Design):
                     lead_length=lead_length,
                     cpw_gap=cpw_gap,
                     cpw_width=cpw_width,
-                )
+                ),
             )
         )
 
@@ -165,7 +170,7 @@ class Chip(Design):
                 position=position,
                 orientation=orientation,
                 cpw_width=rf_config["cpw_width"],
-                cpw_gap=rf_config["cpw_gap"]
+                cpw_gap=rf_config["cpw_gap"],
             )
 
         return self.rf_ports
@@ -203,6 +208,7 @@ class JAWS(Chip):
     show
         Show the design in the GUI.
     """
+
     _config_filename = "JAWS.yaml"
 
 
@@ -225,6 +231,7 @@ class SMASH2(Chip):
     show
         Show the design in the GUI.
     """
+
     _config_filename = "SMASH2.yaml"
 
 
@@ -247,6 +254,7 @@ class SMASH12(Chip):
     show
         Show the design in the GUI.
     """
+
     _config_filename = "SMASH12.yaml"
 
 

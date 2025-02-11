@@ -32,6 +32,7 @@ class Design:
     show
         Show the design in the GUI.
     """
+
     def __init__(
         self,
         design: Optional[DesignPlanar] = None,
@@ -81,14 +82,12 @@ class Geometry:
 
     def move(self, pos_x: float, pos_y: float, orientation: float) -> None:
         # rotate
-        rotated_polyon = draw.rotate(
-            self.polygon, angle=orientation, origin=[0, 0]
-        )
+        rotated_polyon = draw.rotate(self.polygon, angle=orientation, origin=[0, 0])
         # translate
         self.polygon = draw.translate(rotated_polyon, xoff=pos_x, yoff=pos_y)
 
     def add_to_(self, component: QComponent) -> None:
-        component.add_qgeometry('poly', {self.name: self.polygon}, **self.options)
+        component.add_qgeometry("poly", {self.name: self.polygon}, **self.options)
 
 
 class Component(QComponent):
@@ -121,15 +120,19 @@ class Component(QComponent):
         # add ports as pins
         self.ports.add_as_pins(self)
 
-    def move(self, geometry: Geometry, pos_x: float, pos_y: float, orientation: float) -> Geometry:
+    def move(
+        self, geometry: Geometry, pos_x: float, pos_y: float, orientation: float
+    ) -> Geometry:
         return Geometry(
             name=geometry.name,
             polygon=draw.translate(
-                draw.rotate(
-                    geometry.polygon, angle=orientation, origin=[0, 0]
-                ), xoff=pos_x, yoff=pos_y,
-            )
+                draw.rotate(geometry.polygon, angle=orientation, origin=[0, 0]),
+                xoff=pos_x,
+                yoff=pos_y,
+            ),
         )
 
     def generate_geometries(self, **kwargs) -> List[Geometry]:
-        raise NotImplementedError("generate_geometries must be implemented in subclass.")
+        raise NotImplementedError(
+            "generate_geometries must be implemented in subclass."
+        )

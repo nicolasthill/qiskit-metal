@@ -24,5 +24,5 @@ def load_yaml(file_path: Path) -> dict:
     dict
         Contents of the YAML file.
     """
-    with open(file_path, 'r') as file:
+    with open(file_path, "r") as file:
         return yaml.safe_load(file)
