@@ -152,7 +152,6 @@ class Port:
 
     def pin_kwargs(self) -> dict:
         """Return a dictionary of pin kwargs."""
-        print(self.direction)
         port_point = self.position
         point_behind_port_point = port_point + 1e-6 * np.array([
             np.cos(self.direction), np.sin(self.direction)
