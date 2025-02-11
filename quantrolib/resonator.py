@@ -10,7 +10,7 @@ class Resonator(Component):
     default_options = Dict(
         pad_width="680um",  # Width of the resonator pad
         pad_length="540um",  # Length of the resonator pad
-        ground_gap="50um",  # Ground gap surrounding the resonator pad
+        ground_gap="25um",  # Ground gap surrounding the resonator pad
         # adapter_length='560um',     # Length of the adapter from the pad to the CPW pin
         nanowire_width="10um",  # Width of the nano-wire
         nanowire_length="100um",  # Length of the nano-wire
@@ -36,8 +36,8 @@ class Resonator(Component):
         """Generate the geometry for the wirebond resonator."""
 
         # Ground cutout
-        ground_pad_width = pad_width + ground_gap
-        ground_pad_length = pad_length + ground_gap
+        ground_pad_width = pad_width + 2 * ground_gap
+        ground_pad_length = pad_length + 2 * ground_gap
         ground_pad = Geometry(
             name="ground_pad",
             polygon=draw.rectangle(ground_pad_width, ground_pad_length, 0, 0),
