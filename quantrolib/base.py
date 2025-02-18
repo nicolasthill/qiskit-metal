@@ -8,6 +8,7 @@ Design
 """
 
 from typing import Optional, List
+from pathlib import Path
 
 
 from qiskit_metal import draw
@@ -16,6 +17,9 @@ from qiskit_metal import MetalGUI, QComponent
 from qiskit_metal.designs import DesignPlanar
 
 from quantrolib.port import Ports
+
+GDS_DIRECTORY = Path.cwd() / "gds_files"
+GDS_DIRECTORY.mkdir(exist_ok=True)
 
 
 class Design:
@@ -52,6 +56,19 @@ class Design:
         self._design = design if design is not None else DesignPlanar()
         self._design.overwrite_enabled = True
         self._gui = gui if gui is not None else MetalGUI(self._design)
+
+        self.gds_renderer = self._design.renderers.gds
+
+    def generate_gds(self, file_name: str = "") -> None:
+        """Generate a GDS file for the design.
+
+        Parameters
+        ----------
+        file_name : str
+            The name of the GDS file to generate.
+        """
+        file = file_name + ".gds"
+        self.gds_renderer.export_to_gds(GDS_DIRECTORY / file)
 
     def __del__(self):
 
