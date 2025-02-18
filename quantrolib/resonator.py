@@ -52,9 +52,12 @@ class Resonator(Component):
         # Create nano-wire
         nanowire = Geometry(
             "nanowire",
-            draw.rectangle(
-                nanowire_length, nanowire_width, 0, pad_length / 2 - nanowire_width / 2
-            ),
+            draw.LineString([
+                (-nanowire_length / 2, pad_length / 2 - nanowire_width / 2),
+                (nanowire_length / 2, pad_length / 2 - nanowire_width / 2)
+            ]),
+            type="junction",
+            options=dict(width=nanowire_width),
         )
 
         # Create resonator pad

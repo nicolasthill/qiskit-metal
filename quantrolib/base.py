@@ -7,7 +7,7 @@ Design
 
 """
 
-from typing import Optional, List
+from typing import Optional, List, Literal
 from pathlib import Path
 
 
@@ -90,11 +90,18 @@ class Design:
 
 class Geometry:
 
-    def __init__(self, name: str, polygon: draw.Polygon, options: dict = None):
+    def __init__(
+        self,
+        name: str,
+        polygon: draw.Polygon,
+        type: Literal["poly", "junction"] = "poly",
+        options: dict = None,
+    ):
         if options is None:
             options = {}
         self.name = name
         self.polygon = polygon
+        self.type = type
         self.options = options
 
     def move(self, pos_x: float, pos_y: float, orientation: float) -> None:
@@ -104,7 +111,11 @@ class Geometry:
         self.polygon = draw.translate(rotated_polyon, xoff=pos_x, yoff=pos_y)
 
     def add_to_(self, component: QComponent) -> None:
-        component.add_qgeometry("poly", {self.name: self.polygon}, **self.options)
+        component.add_qgeometry(
+            self.type,
+            {self.name: self.polygon},
+            **self.options
+        )
 
 
 class Component(QComponent):
