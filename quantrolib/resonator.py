@@ -15,8 +15,8 @@ class Resonator(Component):
         pad_length="540um",  # Length of the resonator pad
         ground_gap="25um",  # Ground gap surrounding the resonator pad
         # adapter_length='560um',     # Length of the adapter from the pad to the CPW pin
-        nanowire_width="10um",  # Width of the nano-wire
-        nanowire_length="100um",  # Length of the nano-wire
+        nanowire_width="2um",  # Width of the nano-wire
+        nanowire_length="94um",  # Length of the nano-wire
         nanowire_gap_width="50um",  # ground gap from the nano-wire
         cpw_width='10um',           # Width of the CPW track at the pin
         cpw_gap='6um',              # Gap of the CPW track at the pin
