@@ -1,5 +1,5 @@
 from qiskit_metal import draw, Dict
-
+import numpy as np
 
 from quantrolib.base import Component, Geometry
 from quantrolib.port import Port
@@ -84,9 +84,20 @@ class Launcher(Component):
             port=Port(
                 position=[pad_length / 2 + adapter_length, 0],
                 direction=0,
-                name=self.name,
+                name='out',
                 width=cpw_width,
                 gap=cpw_gap,
+            ),
+        )
+
+        # Add port to GND
+        self.ports.add(
+            port=Port(
+                position=[-pad_length / 2, 0],
+                direction=np.pi,
+                name='in',
+                width=pad_width,
+                gap=ground_gap,
             ),
         )
 
