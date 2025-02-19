@@ -165,6 +165,7 @@ class QHFSSRenderer(QAnsysRenderer):
 
         self.chip_subtract_dict = defaultdict(set)
         self.assign_perfE = []
+        self.assign_perfE_GND = []
         self.assign_mesh = []
         self.assign_port_mesh = []
         self.jj_lumped_ports = {}
@@ -405,6 +406,7 @@ class QHFSSRenderer(QAnsysRenderer):
     def metallize(self):
         """Assign metallic property to all shapes in self.assign_perfE list."""
         self.modeler.assign_perfect_E(self.assign_perfE)
+        self.modeler.assign_perfect_E_GND(self.assign_perfE_GND)
 
     def add_drivenmodal_design(self, name: str, connect: bool = True):
         """

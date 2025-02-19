@@ -1028,6 +1028,7 @@ class QAnsysRenderer(QRendererAnalysis):
 
         self.chip_subtract_dict = defaultdict(set)
         self.assign_perfE = []
+        self.assign_perfE_GND = []
         self.assign_mesh = []
 
         self.render_tables()
@@ -1545,7 +1546,7 @@ class QAnsysRenderer(QRendererAnalysis):
         if self.chip_subtract_dict[chip_name]:
             # Any layer which has subtract=True qgeometries will have a ground plane
             # TODO: Material property assignment may become layer-dependent.
-            self.assign_perfE.append(f"ground_{chip_name}_plane")
+            self.assign_perfE_GND.append(f"ground_{chip_name}_plane")
 
     def subtract_from_ground(self):
         """For each chip, subtract all "negative" shapes residing on its
