@@ -7,7 +7,6 @@ from qiskit_metal.designs import DesignPlanar
 
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
 
