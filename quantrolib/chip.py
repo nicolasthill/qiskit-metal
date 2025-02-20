@@ -22,6 +22,28 @@ from logger import logger as log
 from qiskit_metal.qlibrary.core import QComponent
 
 
+class Chiplet(Design):
+
+    def __init__(self, size_x: str, size_y: str, **kwargs) -> None:
+        """Initializes the Chip class."""
+        super().__init__(**kwargs)
+
+        # chip characteristics
+        self._design.chips.main = {
+            "material": "silicon",
+            "layer_start": "0",
+            "layer_end": "2048",
+            "size": {
+                "center_x": "0.0mm",
+                "center_y": "0.0mm",
+                "center_z": "0.0mm",
+                "size_x": size_x,
+                "size_y": size_x,
+                "size_z": "-750um",
+                "sample_holder_top": "890um",
+                "sample_holder_bottom": "1650um",
+            },
+        }
 
 
 class Chip(Design):
