@@ -10,7 +10,6 @@ Chip types
     - SMASH12
 """
 
-import logging
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -18,10 +17,11 @@ from quantrolib.base import Design
 from quantrolib.component import Launcher
 from quantrolib.utilities import load_yaml
 
+from logger import logger as log
 
 from qiskit_metal.qlibrary.core import QComponent
 
-log = logging.getLogger(__name__)
+
 
 
 class Chip(Design):

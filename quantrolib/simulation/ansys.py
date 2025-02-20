@@ -1,4 +1,3 @@
-import logging
 from typing import Any, Dict, List
 
 from qiskit_metal.renderers.renderer_ansys.hfss_renderer import QHFSSRenderer
@@ -6,7 +5,7 @@ from qiskit_metal.renderers.renderer_ansys.hfss_renderer import QHFSSRenderer
 from quantrolib.simulation import Config, RenderConfig, SimulationConfig, ReportConfig
 
 # Configure logging
-log = logging.getLogger(__name__)
+from logger import logger as log
 
 
 class ANSYS:

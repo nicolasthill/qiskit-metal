@@ -1,14 +1,12 @@
 """Utility functions for the quantrolib package."""
 
 # built-in packages
-import logging
-
 from pathlib import Path
 
 # external packages
 import yaml
 
-log = logging.getLogger(__name__)
+from logger import logger
 
 
 def load_yaml(file_path: Path) -> dict:
