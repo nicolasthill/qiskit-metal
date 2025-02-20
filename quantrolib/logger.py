@@ -6,7 +6,10 @@ def setup_package_logger():
     logger = logging.getLogger("quantrolib")
     logger.setLevel(logging.DEBUG)
 
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter(
+        '%(levelname)s %(asctime)s [%(name)s]: %(message)s',
+        datefmt='%I:%M%p',
+    )
 
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
@@ -14,6 +17,9 @@ def setup_package_logger():
 
     logger.addHandler(handler)
 
+    logger.propagate = False
+
     return logger
+
 
 logger = setup_package_logger()
