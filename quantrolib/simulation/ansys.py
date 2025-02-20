@@ -81,97 +81,73 @@ class ANSYS:
     def run_render(self) -> None:
         config: RenderConfig = self._get_current_config("render")
 
+        if config.design_name is None:
+            log.info(
+                f"No design name provided. Automatically using '{config.design.name}'."
+            )
+            config.design_name = config.design.name
+
         # Rebuild the design and get the renderer.
         design = config.design
         design.rebuild()
 
         self.renderer: QHFSSRenderer = config.design.renderers.hfss
 
-        # Select project path, name and design
-        self.renderer._options["project_path"] = config.project_path
-        self.renderer._options["project_name"] = config.project_name
-        self.renderer._options["design_name"] = config.design_name
+        # Update renderer options with project and design information
+        self.renderer._options.update({
+            "project_path": config.project_path,
+            "project_name": config.project_name,
+            "design_name": config.design_name,
+        })
 
-        # Connect to the renderer
-        self.renderer.start()
+        try:
+            self.renderer.start()
+        except Exception as e:
+            # Check if the exception message indicates that the design was not found.
+            if "Did you provide the correct design name?" in str(e):
+                self.renderer.new_ansys_design(config.design_name, config.mode)
+                log.info(f"Created new design '{config.design_name}' ignore the error.")
+            else:
+                raise
 
-        # Check loaded project
+        pinfo = self.renderer._pinfo
+
+        # --- Validate the project connection ---
         if config.project_name is None:
-            project_name = self.renderer._pinfo.project_name
-            project_path = self.renderer._pinfo.project_path
             log.info(
-                "No project name provided. "
-                f"Automatically connected to project {project_name} at {project_path}."
+                f"No project name provided. Automatically connected to project "
+                f"{pinfo.project_name} at {pinfo.project_path}."
             )
-        elif config.project_name == self.renderer._pinfo.project_name:
-            log.info(f"Project '{config.project_name}' successfully loaded")
-        else:
-            project_name = self.renderer._pinfo.project_name
+        elif config.project_name != pinfo.project_name:
             raise ValueError(
-                f"The loaded project '{project_name}' does not match the provided "
-                f"project name '{config.project_name}'."
-            ) 
+                f"The loaded project '{pinfo.project_name}' does not match the one "
+                f"provided: '{config.project_name}'."
+            )
 
-        # Check loaded design
-        if config.design_name is None:
-            design_name = self.renderer._pinfo.design_name
-            project_name = self.renderer._pinfo.project_name
-            log.info(
-                "No design name provided. "
-                f"Automatically connected to {design_name} in {project_name}."
-            )
-            log.warning(
-                "Always provide a design name to avoid overwriting designs."
-            )
-        elif config.design_name == self.renderer._pinfo.design_name:
-            log.info(f"Design '{config.design_name}' successfully loaded")
-        else:
-            design_name = self.renderer._pinfo.design_name
+        # --- Ensure a design is loaded ---
+        if pinfo.design is None:
+            log.info(f"Creating new design '{config.design_name}'")
+            self.renderer.new_ansys_design(config.design_name, config.mode)
+
+        # --- Validate the design connection ---
+        if config.design_name != pinfo.design_name:
             raise ValueError(
-                f"The loaded design '{design_name}' does not match the provided "
+                f"The loaded design '{pinfo.design_name}' does not match the provided "
                 f"design name '{config.design_name}'."
             )
 
-        # # Check if the design already exists and warn if so.
-        # if (
-        #     hasattr(self.renderer, 'active_design')
-        #     and self.renderer.active_design == config.design_name
-        # ):
-        #     log.warning(
-        #         f"ANSYS design '{config.design_name}' already exists. "
-        #         "Using existing design."
-        #     )
-        # else:
-        #     try:
-        #         self.renderer.new_ansys_design(config.design_name, config.mode)
-        #     except Exception as e:
-        #         # Check if the error corresponds to "design already exists".
-        #         # (This check may need to be adjusted to your COM error format.)
-        #         try:
-        #             hr = e.args[2][5]
-        #         except Exception:
-        #             hr = None
-        #         if hr == -2147024885:
-        #             log.warning(
-        #                 f"ANSYS design '{config.design_name}' already exists. "
-        #                 "Using existing design."
-        #             )
-        #         else:
-        #             raise
+        # Configure meshing
+        if config.max_mesh_length_jj is not None:
+            self.renderer.options["max_mesh_length_jj"] = config.max_mesh_length_jj
+        if config.max_mesh_length_port is not None:
+            self.renderer.options["max_mesh_length_port"] = config.max_mesh_length_port
 
-        # # Configure meshing
-        # if config.max_mesh_length_jj is not None:
-        #     self.renderer.options["max_mesh_length_jj"] = config.max_mesh_length_jj
-        # if config.max_mesh_length_port is not None:
-        #     self.renderer.options["max_mesh_length_port"] = config.max_mesh_length_port
-
-        # # Connect to the design and render it.
-        # self.renderer.connect_ansys_design(config.design_name)
-        # self.renderer.clean_active_design()
-        # self.renderer.render_design(
-        #     open_pins=config.open_pins, port_list=config.port_list,
-        # )
-        log.info("Render ran successfully.")
+        # Clean the design and render it.
+        self.renderer.clean_active_design()
+        self.renderer.render_design(
+            open_pins=config.open_pins, port_list=config.port_list,
+        )
+        log.info("##### RENDER SUCCESSFULL #####")
 
     def run_simulation(self) -> None:
         config: SimulationConfig = self._get_current_config("simulation")
@@ -189,17 +165,16 @@ class ANSYS:
         )
         self.renderer.activate_ansys_setup(config.name)
         self.renderer.analyze_setup(config.name)
-        log.info("Simulation ran successfully.")
+        log.info("##### SIMULATION SUCCESSFULL #####")
 
     def run_report(self) -> None:
         config: ReportConfig = self._get_current_config("report")
 
         for field_config in config.field_configs:
             self.renderer.plot_fields(**field_config)
-
-        pass
+        log.info("##### REPORT SUCCESSFULL #####")
 
     def run(self) -> None:
         self.run_render()
-        # self.run_simulation()
-        # self.run_report()
+        self.run_simulation()
+        self.run_report()
