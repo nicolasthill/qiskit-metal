@@ -6,6 +6,42 @@ from quantrolib.base import Component, Geometry
 from quantrolib.port import Port
 from qiskit_metal import draw, Dict
 
+def generate_snaking_points(
+    n_pairs: int,
+    x_tot: float,
+    y_tot: float,
+    center_offset: float,
+    wire_gap: float,
+    teeth_gap: float,
+    wire_length: float,
+) -> List[Tuple[float, float]]:
+    """
+    Generate raw snaking points for the finger (capacitor) gap.
+
+    The algorithm uses the available extents (x_tot, y_tot) and parameters
+    (wire_gap, teeth_gap, wire_length) to create a series of points that
+    will later be smoothed (via filleting) into a continuous path.
+    """
+    y_max = (y_tot - wire_gap - teeth_gap) / 2.0
+    x_max = x_tot - wire_length
+    y_spacing = y_max / (n_pairs + 1)
+    if y_spacing < (2 * teeth_gap):
+        raise ValueError("Invalid parameters: y_spacing < 2 * teeth_gap.")
+
+    points = [(0, 0), (0, y_spacing)]
+
+    def f(y: float, index: int) -> float:
+        return - (center_offset + (-1) ** index) / 2.0 * (x_max / y_max) * (y + y_spacing)
+
+    for index in range(1, n_pairs + 1):
+        y_pos = index * y_spacing
+        x_pos = f(y_pos, index)
+        points.append((x_pos, y_pos))
+        points.append((x_pos, y_pos + y_spacing))
+
+    parity = (-1) ** n_pairs
+    points.append((f(y_pos, n_pairs + 1) + parity * wire_length / 2.0, y_pos + y_spacing))
+    return points
 
 class Resonator(Component):
     """A resonator component for wirebond connections to on-chip coplanar waveguides."""
@@ -280,44 +316,6 @@ class IncaResonatorShortedMasked(Component):
         pad = Geometry("pad", pad)
 
         return [pad, nanowire, ground_pad]
-
-    def generate_raw_points(
-        self,
-        n_pairs: int,
-        x_tot: float,
-        y_tot: float,
-        center_offset: float,
-        wire_gap: float,
-        teeth_gap: float,
-        wire_length: float,
-    ) -> List[Tuple[float, float]]:
-        """
-        Generate raw zigzag points for the finger (capacitor) gap.
-
-        The algorithm uses the available extents (x_tot, y_tot) and parameters
-        (wire_gap, teeth_gap, wire_length) to create a series of points that
-        will later be smoothed (via filleting) into a continuous path.
-        """
-        y_max = (y_tot - wire_gap - teeth_gap) / 2.0
-        x_max = x_tot - wire_length
-        y_spacing = y_max / (n_pairs + 1)
-        if y_spacing < (2 * teeth_gap):
-            raise ValueError("Invalid parameters: y_spacing < 2 * teeth_gap.")
-
-        points = [(0, 0), (0, y_spacing)]
-
-        def f(y: float, index: int) -> float:
-            return - (center_offset + (-1) ** index) / 2.0 * (x_max / y_max) * (y + y_spacing)
-
-        for index in range(1, n_pairs + 1):
-            y_pos = index * y_spacing
-            x_pos = f(y_pos, index)
-            points.append((x_pos, y_pos))
-            points.append((x_pos, y_pos + y_spacing))
-
-        parity = (-1) ** n_pairs
-        points.append((f(y_pos, n_pairs + 1) + parity * wire_length / 2.0, y_pos + y_spacing))
-        return points
 
     def remove_gap_from_pad(
         self,
