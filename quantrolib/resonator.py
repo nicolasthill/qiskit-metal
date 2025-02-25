@@ -43,6 +43,58 @@ def generate_snaking_points(
     points.append((f(y_pos, n_pairs + 1) + parity * wire_length / 2.0, y_pos + y_spacing))
     return points
 
+def generate_finger_gap(
+    n_pairs,
+    points,
+    reference_point,
+    x_reference,
+    flip=False,
+    teeth_gap=None,
+    nanowire_gap_width=None,
+):
+    # 2) Transform positions relative to symmetry reference
+    points = np.array(points) + [x_reference, nanowire_gap_width/2]
+
+    if flip:
+        points[:, 1] *= -1
+
+    if n_pairs % 2 != 0:  # ensures line is always on the right
+        points[:, 0] *= -1
+
+    points = points.tolist()
+
+    previous_point = None
+    joint_gap = None
+    for index, point in enumerate(points):
+        point = (point[0] + reference_point[0], -point[1] + reference_point[1])
+
+        if previous_point is not None:
+            rect_point = (
+                (point[0] + previous_point[0]) / 2,
+                (point[1] + previous_point[1]) / 2,
+            )
+
+            if index % 2 == 1:  # dy
+                gap = draw.rectangle(
+                    teeth_gap, point[1] - previous_point[1] - teeth_gap, *rect_point
+                )
+            elif index % 2 == 0:  # dx
+                gap = draw.rectangle(
+                    point[0] - previous_point[0] + teeth_gap,
+                    -teeth_gap,
+                    *rect_point,
+                )
+            else:
+                raise ValueError("This should not happen.")
+
+            if joint_gap is None:
+                joint_gap = gap
+            else:
+                joint_gap = joint_gap.union(gap)
+        previous_point = point
+    return joint_gap
+
+
 class Resonator(Component):
     """A resonator component for wirebond connections to on-chip coplanar waveguides."""
 
@@ -293,8 +345,8 @@ class IncaResonatorShortedMasked(Component):
 
         pad = pad.difference(nanowire_gap)
 
-        # 1) Create a long list of `raw_points`
-        raw_points = self.generate_raw_points(
+        # 1) Create a long list of snaking `raw_points`
+        raw_points = generate_snaking_points(
             n_pairs=n_pairs,
             x_tot=s_ground_size - ground_gap_width,
             y_tot=s_ground_size,
@@ -304,10 +356,7 @@ class IncaResonatorShortedMasked(Component):
             wire_length=nanowire_length,
         )
 
-        reference_point = (0, 0)
-        from shapely.affinity import scale
-
-        bottom_gap = self.remove_gap_from_pad(n_pairs, raw_points, reference_point, x_reference, flip=False, teeth_gap=teeth_gap, nanowire_gap_width=nanowire_gap_width)
+        bottom_gap = generate_finger_gap(n_pairs, raw_points, (0, 0), x_reference, flip=False, teeth_gap=teeth_gap, nanowire_gap_width=nanowire_gap_width)
         top_gap = scale(bottom_gap, xfact=1.0, yfact=-1.0, origin=(0, 0))
         
         pad = pad.difference(bottom_gap)
@@ -316,58 +365,6 @@ class IncaResonatorShortedMasked(Component):
         pad = Geometry("pad", pad)
 
         return [pad, nanowire, ground_pad]
-
-    def remove_gap_from_pad(
-        self,
-        n_pairs,
-        points,
-        reference_point,
-        x_reference,
-        flip=False,
-        teeth_gap=None,
-        nanowire_gap_width=None,
-    ):
-        # 2) Transform positions relative to symmetry reference
-        points = np.array(points) + [x_reference, nanowire_gap_width/2]
-
-        if flip:
-            points[:, 1] *= -1
-
-        if n_pairs % 2 != 0:  # ensures line is always on the right
-            points[:, 0] *= -1
-
-        points = points.tolist()
-
-        previous_point = None
-        joint_gap = None
-        for index, point in enumerate(points):
-            point = (point[0] + reference_point[0], -point[1] + reference_point[1])
-
-            if previous_point is not None:
-                rect_point = (
-                    (point[0] + previous_point[0]) / 2,
-                    (point[1] + previous_point[1]) / 2,
-                )
-
-                if index % 2 == 1:  # dy
-                    gap = draw.rectangle(
-                        teeth_gap, point[1] - previous_point[1] - teeth_gap, *rect_point
-                    )
-                elif index % 2 == 0:  # dx
-                    gap = draw.rectangle(
-                        point[0] - previous_point[0] + teeth_gap,
-                        -teeth_gap,
-                        *rect_point,
-                    )
-                else:
-                    raise ValueError("This should not happen.")
-
-                if joint_gap is None:
-                    joint_gap = gap
-                else:
-                    joint_gap = joint_gap.union(gap)
-            previous_point = point
-        return joint_gap
 
 
 if __name__ == "__main__":
