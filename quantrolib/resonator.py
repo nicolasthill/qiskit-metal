@@ -1,6 +1,7 @@
 from typing import Tuple, List
 
 import numpy as np
+from shapely.affinity import scale
 
 from quantrolib.base import Component, Geometry
 from quantrolib.port import Port
@@ -22,25 +23,27 @@ def generate_snaking_points(
     (wire_gap, teeth_gap, wire_length) to create a series of points that
     will later be smoothed (via filleting) into a continuous path.
     """
-    y_max = (y_tot - wire_gap - teeth_gap) / 2.0
-    x_max = x_tot - wire_length
-    y_spacing = y_max / (n_pairs + 1)
-    if y_spacing < (2 * teeth_gap):
-        raise ValueError("Invalid parameters: y_spacing < 2 * teeth_gap.")
+    y_max = y_tot / 2.0
+    x_max = x_tot
 
-    points = [(0, 0), (0, y_spacing)]
+    starting_y = wire_gap / 2 + 15e-3
+    
+    y_spacing = (y_max - starting_y) / (n_pairs)
+
+    points = [(0, 0), (0, starting_y + teeth_gap/2)]
+    print(points, starting_y, y_spacing)
 
     def f(y: float, index: int) -> float:
         return - (center_offset + (-1) ** index) / 2.0 * (x_max / y_max) * (y + y_spacing)
 
-    for index in range(1, n_pairs + 1):
-        y_pos = index * y_spacing
+    for index in range(0, n_pairs):
+        y_pos = index * y_spacing + starting_y + teeth_gap/2
         x_pos = f(y_pos, index)
         points.append((x_pos, y_pos))
         points.append((x_pos, y_pos + y_spacing))
 
     parity = (-1) ** n_pairs
-    points.append((f(y_pos, n_pairs + 1) + parity * wire_length / 2.0, y_pos + y_spacing))
+    # points.append((f(y_pos, n_pairs + 1) + parity * wire_length / 2.0, y_pos + y_spacing))
     return points
 
 def generate_finger_gap(
@@ -51,9 +54,10 @@ def generate_finger_gap(
     flip=False,
     teeth_gap=None,
     nanowire_gap_width=None,
+    R=1.0,
 ):
     # 2) Transform positions relative to symmetry reference
-    points = np.array(points) + [x_reference, nanowire_gap_width/2]
+    points = np.array(points) + [x_reference, 0]
 
     if flip:
         points[:, 1] *= -1
@@ -92,6 +96,17 @@ def generate_finger_gap(
             else:
                 joint_gap = joint_gap.union(gap)
         previous_point = point
+
+    # Remove from last tooth
+    if R != 1.0:
+        gap = draw.rectangle(
+            (1.0 - R) * np.abs(2 * points[-1][0]),
+            2 * (points[-2][1] - points[-1][1]),
+            xoff=(-1)**(n_pairs % 2) * R * points[-1][0],
+            yoff=points[-1][1],
+        )
+        joint_gap = joint_gap.union(gap)
+
     return joint_gap
 
 
@@ -252,7 +267,7 @@ class Resonator(Component):
 
 class IncaResonatorShortedMasked(Component):
     default_options = dict(
-        n_pairs=16,                              # Number of finger pairs
+        n_pairs=7,                              # Number of finger pairs
         nanowire_width="2um",                   # Width of the nano-wire
         nanowire_length="94um",                 # Length of the nano-wire
         nanowire_gap_width="100um",              # ground gap from the nano-wire
@@ -348,15 +363,24 @@ class IncaResonatorShortedMasked(Component):
         # 1) Create a long list of snaking `raw_points`
         raw_points = generate_snaking_points(
             n_pairs=n_pairs,
-            x_tot=s_ground_size - ground_gap_width,
-            y_tot=s_ground_size,
+            x_tot=n_ground_size,
+            y_tot=n_ground_size,
             center_offset=center_offset,
             wire_gap=nanowire_gap_width,
             teeth_gap=teeth_gap,
             wire_length=nanowire_length,
         )
 
-        bottom_gap = generate_finger_gap(n_pairs, raw_points, (0, 0), x_reference, flip=False, teeth_gap=teeth_gap, nanowire_gap_width=nanowire_gap_width)
+        bottom_gap = generate_finger_gap(
+            n_pairs,
+            raw_points,
+            (0, 0),
+            x_reference,
+            flip=False,
+            teeth_gap=teeth_gap,
+            nanowire_gap_width=nanowire_gap_width,
+            R=1.0, # TODO: otherwise the last tooth is removed falsely for odd n_pairs
+        )
         top_gap = scale(bottom_gap, xfact=1.0, yfact=-1.0, origin=(0, 0))
         
         pad = pad.difference(bottom_gap)
@@ -367,15 +391,146 @@ class IncaResonatorShortedMasked(Component):
         return [pad, nanowire, ground_pad]
 
 
+class IncaResonator(Component):
+    """An interdigitated resonator component with triangular finger pattern."""
+
+    default_options = Dict(
+        n_pairs=7,                              # Number of finger pairs
+        wire_dimensions=("2um", "94um", "100um"),  # (width, length, gap)
+        teeth_dimensions=("10um", "40um", "10um"),  # (width, length, gap)
+        pad_height="850um",                      # Height of the resonator pad
+        pad_width="1440um",                      # Width of the resonator pad
+        fillet="10um",                       # Fillet radius for corners
+        ratio=1.0,                               # Ratio for end finger lengths (0-1)
+        teeth_length_ext="70um",                 # Extra extension for fingers
+        ground_gap_width="50um",                 # Gap width between resonator and ground
+        R=0.75,                                  # Remove percetage of last tooth
+    )
+
+    component_metadata = Dict(
+        short_name="inca_resonator",
+    )
+
+    def generate_geometries(
+        self,
+        n_pairs,
+        wire_dimensions,
+        teeth_dimensions,
+        pad_height,
+        pad_width,
+        ratio,
+        teeth_length_ext,
+        ground_gap_width,
+        R,
+        **kwargs,
+    ):
+        """Generate the geometry for the Inca resonator."""
+        
+        # Unpack dimensions
+        wire_width, wire_length, wire_gap = wire_dimensions
+        teeth_width, teeth_length, teeth_gap = teeth_dimensions
+
+        # 1) Ground cutout
+        ground_pad = Geometry(
+            name="ground_pad",
+            polygon=draw.rectangle(
+                pad_width + ground_gap_width, pad_height + ground_gap_width, 
+                0, 0,
+            ),
+            options=dict(subtract=True),
+        )
+
+        # Create base pad outline        
+        pad = draw.rectangle(pad_width, pad_height, 0, 0)
+
+        # Create finger gaps
+        raw_points = generate_snaking_points(
+            n_pairs=n_pairs,
+            x_tot=pad_height,
+            y_tot=pad_height,
+            center_offset=0.0,
+            wire_gap=wire_gap,
+            teeth_gap=teeth_gap,
+            wire_length=wire_length,
+        )
+
+        bottom_gap = generate_finger_gap(
+            n_pairs,
+            raw_points,
+            (0, 0),
+            0,
+            flip=False,
+            teeth_gap=teeth_gap,
+            nanowire_gap_width=wire_gap,
+            R=R,
+        )
+        top_gap = scale(bottom_gap, xfact=-1.0, yfact=-1.0, origin=(0, 0))
+        
+        pad = pad.difference(bottom_gap)
+        pad = pad.difference(top_gap)
+
+        # Create wire gap
+        wire_gap_geom = draw.rectangle(wire_length, wire_gap, 0, 0)
+        pad = pad.difference(wire_gap_geom)
+
+        # Create nanowire
+        nanowire = Geometry(
+            "nanowire",
+            draw.LineString([
+                (-wire_length/2, 0),
+                (wire_length/2, 0)
+            ]),
+            type="junction",
+            options=dict(width=wire_width),
+        )
+
+        # Create pad fingers
+        finger_width = 20e-3
+        finger_spacing = 20e-3
+
+        top_right_fingers = None
+        for i in range(int( n_pairs / 2 )  + 1 ):
+            y_pos = i * (finger_width + finger_spacing)
+            x_pos = i*pad_width/2/n_pairs
+            finger = draw.rectangle(
+                pad_width,
+                finger_width,
+                + (pad_width + wire_length + 3*finger_spacing)/2 + x_pos,
+                y_pos + finger_spacing,
+            )
+            if top_right_fingers is None:
+                top_right_fingers = finger
+            else:
+                top_right_fingers = top_right_fingers.union(finger)
+        
+        if top_right_fingers is None:
+            raise ValueError("No fingers found")
+
+        top_left_fingers = scale(top_right_fingers, xfact=-1.0, yfact=1.0, origin=(0, 0))
+        bot_right_fingers = scale(top_right_fingers, xfact=1.0, yfact=-1.0, origin=(0, 0))
+        bot_left_fingers = scale(top_right_fingers, xfact=-1.0, yfact=-1.0, origin=(0, 0))
+        pad = pad.difference(top_right_fingers)
+        pad = pad.difference(top_left_fingers)
+        pad = pad.difference(bot_right_fingers)
+        pad = pad.difference(bot_left_fingers)
+
+
+        # pad.buffer(fillet_size)
+
+        pad = Geometry("pad", pad)
+        
+        return [pad, nanowire, ground_pad]
+
+
 if __name__ == "__main__":
     import time
 
     from quantrolib.chip import JAWS
-    from quantrolib.resonator import Resonator  # noqa: F811
+    from quantrolib.resonator import IncaResonator  # noqa: F811
 
     chip = JAWS()
 
-    resonator = Resonator(design=chip, name="example_resonator")
+    resonator = IncaResonator(design=chip, name="example_resonator")
 
     chip.draw()
     time.sleep(1)  # such that the script waits until closing the GUI
