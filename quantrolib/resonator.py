@@ -636,7 +636,6 @@ class BraggResonator(Component):
             center_offset=center_offset,
             wire_gap=nanowire_gap_width,
             teeth_gap=teeth_gap,
-            wire_length=nanowire_length,
         )
 
         bottom_gap = generate_finger_gap(
@@ -646,7 +645,6 @@ class BraggResonator(Component):
             x_reference,
             flip=False,
             teeth_gap=teeth_gap,
-            nanowire_gap_width=nanowire_gap_width,
             R=1.0,  # TODO: otherwise the last tooth is removed falsely for odd n_pairs
         )
         top_gap = scale(bottom_gap, xfact=1.0, yfact=-1.0, origin=(0, 0))
