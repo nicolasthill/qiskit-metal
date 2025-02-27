@@ -7,6 +7,7 @@ from quantrolib.base import Component, Geometry
 from quantrolib.port import Port
 from qiskit_metal import draw, Dict
 
+
 def generate_snaking_points(
     n_pairs: int,
     x_tot: float,
@@ -14,7 +15,6 @@ def generate_snaking_points(
     center_offset: float,
     wire_gap: float,
     teeth_gap: float,
-    wire_length: float,
 ) -> List[Tuple[float, float]]:
     """
     Generate raw snaking points for the finger (capacitor) gap.
@@ -27,14 +27,13 @@ def generate_snaking_points(
     x_max = x_tot
 
     starting_y = wire_gap / 2 + 15e-3
-    
+
     y_spacing = (y_max - starting_y) / (n_pairs)
 
     points = [(0, 0), (0, starting_y + teeth_gap/2)]
-    print(points, starting_y, y_spacing)
 
     def f(y: float, index: int) -> float:
-        return - (center_offset + (-1) ** index) / 2.0 * (x_max / y_max) * (y + y_spacing)
+        return - (center_offset + (-1) ** index) / 2.0 * x_max / y_max * (y + y_spacing)
 
     for index in range(0, n_pairs):
         y_pos = index * y_spacing + starting_y + teeth_gap/2
@@ -42,9 +41,8 @@ def generate_snaking_points(
         points.append((x_pos, y_pos))
         points.append((x_pos, y_pos + y_spacing))
 
-    parity = (-1) ** n_pairs
-    # points.append((f(y_pos, n_pairs + 1) + parity * wire_length / 2.0, y_pos + y_spacing))
     return points
+
 
 def generate_finger_gap(
     n_pairs,
@@ -53,7 +51,6 @@ def generate_finger_gap(
     x_reference,
     flip=False,
     teeth_gap=None,
-    nanowire_gap_width=None,
     R=1.0,
 ):
     # 2) Transform positions relative to symmetry reference
@@ -102,7 +99,7 @@ def generate_finger_gap(
         gap = draw.rectangle(
             (1.0 - R) * np.abs(2 * points[-1][0]),
             2 * (points[-2][1] - points[-1][1]),
-            xoff=(-1)**(n_pairs % 2) * R * points[-1][0],
+            xoff=-1 * R * points[-1][0],
             yoff=points[-1][1],
         )
         joint_gap = joint_gap.union(gap)
@@ -368,7 +365,6 @@ class IncaResonatorShortedMasked(Component):
             center_offset=center_offset,
             wire_gap=nanowire_gap_width,
             teeth_gap=teeth_gap,
-            wire_length=nanowire_length,
         )
 
         bottom_gap = generate_finger_gap(
@@ -378,11 +374,10 @@ class IncaResonatorShortedMasked(Component):
             x_reference,
             flip=False,
             teeth_gap=teeth_gap,
-            nanowire_gap_width=nanowire_gap_width,
-            R=1.0, # TODO: otherwise the last tooth is removed falsely for odd n_pairs
+            R=1.0,  # TODO: otherwise the last tooth is removed falsely for odd n_pairs
         )
         top_gap = scale(bottom_gap, xfact=1.0, yfact=-1.0, origin=(0, 0))
-        
+
         pad = pad.difference(bottom_gap)
         pad = pad.difference(top_gap)
 
@@ -395,16 +390,16 @@ class IncaResonator(Component):
     """An interdigitated resonator component with triangular finger pattern."""
 
     default_options = Dict(
-        n_pairs=7,                              # Number of finger pairs
+        n_pairs=18,                              # Number of finger pairs
         wire_dimensions=("2um", "94um", "100um"),  # (width, length, gap)
         teeth_dimensions=("10um", "40um", "10um"),  # (width, length, gap)
-        pad_height="850um",                      # Height of the resonator pad
-        pad_width="1440um",                      # Width of the resonator pad
+        pad_height="850um",                  # Height of the resonator pad
+        pad_width="1440um",                  # Width of the resonator pad
         fillet="10um",                       # Fillet radius for corners
-        ratio=1.0,                               # Ratio for end finger lengths (0-1)
-        teeth_length_ext="70um",                 # Extra extension for fingers
-        ground_gap_width="50um",                 # Gap width between resonator and ground
-        R=0.75,                                  # Remove percetage of last tooth
+        ratio=1.0,                           # Ratio for end finger lengths (0-1)
+        teeth_length_ext="70um",             # Extra extension for fingers
+        ground_gap_width="50um",             # Gap width between resonator and ground
+        R=0.75,                              # Remove percetage of last tooth
     )
 
     component_metadata = Dict(
@@ -425,7 +420,7 @@ class IncaResonator(Component):
         **kwargs,
     ):
         """Generate the geometry for the Inca resonator."""
-        
+
         # Unpack dimensions
         wire_width, wire_length, wire_gap = wire_dimensions
         teeth_width, teeth_length, teeth_gap = teeth_dimensions
@@ -434,13 +429,13 @@ class IncaResonator(Component):
         ground_pad = Geometry(
             name="ground_pad",
             polygon=draw.rectangle(
-                pad_width + ground_gap_width, pad_height + ground_gap_width, 
+                pad_width + ground_gap_width, pad_height + ground_gap_width,
                 0, 0,
             ),
             options=dict(subtract=True),
         )
 
-        # Create base pad outline        
+        # Create base pad outline
         pad = draw.rectangle(pad_width, pad_height, 0, 0)
 
         # Create finger gaps
@@ -451,7 +446,6 @@ class IncaResonator(Component):
             center_offset=0.0,
             wire_gap=wire_gap,
             teeth_gap=teeth_gap,
-            wire_length=wire_length,
         )
 
         bottom_gap = generate_finger_gap(
@@ -461,11 +455,10 @@ class IncaResonator(Component):
             0,
             flip=False,
             teeth_gap=teeth_gap,
-            nanowire_gap_width=wire_gap,
             R=R,
         )
         top_gap = scale(bottom_gap, xfact=-1.0, yfact=-1.0, origin=(0, 0))
-        
+
         pad = pad.difference(bottom_gap)
         pad = pad.difference(top_gap)
 
@@ -489,7 +482,7 @@ class IncaResonator(Component):
         finger_spacing = 20e-3
 
         top_right_fingers = None
-        for i in range(int( n_pairs / 2 )  + 1 ):
+        for i in range(int(n_pairs / 2) + 1):
             y_pos = i * (finger_width + finger_spacing)
             x_pos = i*pad_width/2/n_pairs
             finger = draw.rectangle(
@@ -502,23 +495,26 @@ class IncaResonator(Component):
                 top_right_fingers = finger
             else:
                 top_right_fingers = top_right_fingers.union(finger)
-        
+
         if top_right_fingers is None:
             raise ValueError("No fingers found")
 
-        top_left_fingers = scale(top_right_fingers, xfact=-1.0, yfact=1.0, origin=(0, 0))
-        bot_right_fingers = scale(top_right_fingers, xfact=1.0, yfact=-1.0, origin=(0, 0))
-        bot_left_fingers = scale(top_right_fingers, xfact=-1.0, yfact=-1.0, origin=(0, 0))
+        top_left_fingers = scale(
+            top_right_fingers, xfact=-1.0, yfact=1.0, origin=(0, 0)
+        )
+        bot_right_fingers = scale(
+            top_right_fingers, xfact=1.0, yfact=-1.0, origin=(0, 0)
+        )
+        bot_left_fingers = scale(
+            top_right_fingers, xfact=-1.0, yfact=-1.0, origin=(0, 0)
+        )
         pad = pad.difference(top_right_fingers)
         pad = pad.difference(top_left_fingers)
         pad = pad.difference(bot_right_fingers)
         pad = pad.difference(bot_left_fingers)
 
-
-        # pad.buffer(fillet_size)
-
         pad = Geometry("pad", pad)
-        
+
         return [pad, nanowire, ground_pad]
 
 
