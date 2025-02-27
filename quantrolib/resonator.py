@@ -500,7 +500,9 @@ class IncaResonator(Resonator):
 class BraggResonator(Resonator):
     default_options = dict(
         center_offset=0,
-        incoming_line_width="4um",
+        incoming_line_width="4um",     # set to 0 if no incoming line
+        incoming_line_length="100um",  # fixes the extra gap to ground
+        ground_outgoing_pad=True,  # whether to ground the right pad
     )
 
     component_metadata = dict(short_name="inca_resonator")
@@ -521,6 +523,8 @@ class BraggResonator(Resonator):
         pad_height,
         pad_width,
         incoming_line_width,
+        incoming_line_length,
+        ground_outgoing_pad: bool,
         **kwargs,
     ) -> List[Geometry]:
         """
@@ -543,26 +547,38 @@ class BraggResonator(Resonator):
 
         central_position = [x_reference, 0.0]
 
-        # 1) Ground cutout
-        ground_cutout = draw.rectangle(
+        # 0) Resonator pad & ground cutout
+        pad = draw.rectangle(pad_width, pad_height)
+        pad_ground_cutout = draw.rectangle(
             pad_width + 2 * teeth_gap,
             pad_height + 2 * teeth_gap,
-            0, 0,
-        )
-        incoming_line_ground_cutout = draw.rectangle(
-            ground_gap,
-            pad_height + 2 * teeth_gap,
-            - pad_width/2 - ground_gap/2, 0
-        )
-        ground_cutout = ground_cutout.union(incoming_line_ground_cutout)
-
-        ground_pad = Geometry(
-            name="ground_pad",
-            polygon=ground_cutout,
-            options=dict(subtract=True),
         )
 
-        # 2) Create nano-wire
+        # 1) Incoming line
+        if incoming_line_length:
+            if incoming_line_length < ground_gap:
+                raise ValueError(
+                    "Incoming line length must be larger than ground gap,"
+                    " otherwise it is an open stub."
+                )
+
+            # extend cutout
+            incoming_line_ground_cutout = draw.rectangle(
+                incoming_line_length,
+                pad_height + 2 * teeth_gap,
+                - pad_width/2 - incoming_line_length/2, 0
+            )
+            pad_ground_cutout = pad_ground_cutout.union(incoming_line_ground_cutout)
+
+            # add line
+            incoming_line = draw.rectangle(
+                incoming_line_length,
+                incoming_line_width,
+                - pad_width/2 - incoming_line_length/2, 0,
+            )
+            pad = pad.union(incoming_line)
+
+        # 2) Nano-wire
         nanowire = Geometry(
             "nanowire",
             draw.LineString([
@@ -579,23 +595,14 @@ class BraggResonator(Resonator):
             options=dict(width=nanowire_width),
         )
 
-        # 3) Resonator pad
-        pad = draw.rectangle(pad_width, pad_height, 0, 0)
-
         nanowire_gap = draw.rectangle(
             nanowire_length, nanowire_gap_width, x_reference, 0,
         )
 
-        incoming_line = draw.rectangle(
-            ground_gap,
-            incoming_line_width,
-            - pad_width/2 - ground_gap/2, 0
-        )
-
         pad = pad.difference(nanowire_gap)
-        pad = pad.union(incoming_line)
 
-        # 1) Create a long list of snaking `raw_points`
+        # 3) Fingers
+        # Create a long list of snaking `raw_points`
         raw_points = generate_snaking_points(
             n_pairs=n_pairs,
             x_tot=pad_width,
@@ -620,14 +627,20 @@ class BraggResonator(Resonator):
         pad = pad.difference(top_gap)
 
         # Ground the pad
-        metal_to_ground = draw.rectangle(
-            teeth_gap,
-            pad_height - (raw_points[-1][1] - raw_points[-2][1]) - 31.15e-3,
-            +pad_width/2 + teeth_gap/2, 0
-        )
-        pad = pad.union(metal_to_ground)
+        if ground_outgoing_pad:
+            metal_to_ground = draw.rectangle(
+                teeth_gap,
+                2*raw_points[-2][1] - teeth_gap,
+                +pad_width/2 + teeth_gap/2, 0
+            )
+            pad = pad.union(metal_to_ground)
 
         pad = Geometry("pad", pad)
+        ground_pad = Geometry(
+            name="ground_pad",
+            polygon=pad_ground_cutout,
+            options=dict(subtract=True),
+        )
 
         self.ports.add(
             port=Port(
