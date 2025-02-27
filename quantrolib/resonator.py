@@ -107,17 +107,24 @@ def generate_finger_gap(
     return joint_gap
 
 
-class EdgeInductanceResonator(Component):
+class Resonator(Component):
+
+    default_options = dict(
+        pad_width="1440um",              # Width of the resonator pad
+        pad_height="850um",             # Length of the resonator pad
+        n_pairs=18,                     # Number of finger pairs
+        nanowire_width="2um",           # Width of the nano-wire
+        nanowire_length="94um",         # Length of the nano-wire
+        nanowire_gap_width="100um",     # ground gap from the nano-wire
+        ground_gap="25um",              # Ground gap surrounding the resonator pad
+        teeth_gap="10um",               # Gap between the teeth
+    )
+
+
+class EdgeInductanceResonator(Resonator):
     """A resonator component for wirebond connections to on-chip coplanar waveguides."""
 
     default_options = Dict(
-        pad_width="680um",  # Width of the resonator pad
-        pad_length="540um",  # Length of the resonator pad
-        ground_gap="25um",  # Ground gap surrounding the resonator pad
-        # adapter_length='560um',     # Length of the adapter from the pad to the CPW pin
-        nanowire_width="2um",  # Width of the nano-wire
-        nanowire_length="94um",  # Length of the nano-wire
-        nanowire_gap_width="50um",  # ground gap from the nano-wire
         cpw_width='10um',           # Width of the CPW track at the pin
         cpw_gap='6um',              # Gap of the CPW track at the pin
     )
@@ -129,7 +136,7 @@ class EdgeInductanceResonator(Component):
     def generate_geometries(
         self,
         pad_width,
-        pad_length,
+        pad_height,
         ground_gap,
         nanowire_width,
         nanowire_length,
@@ -142,10 +149,10 @@ class EdgeInductanceResonator(Component):
 
         # Ground cutout
         ground_pad_width = pad_width + 2 * ground_gap
-        ground_pad_length = pad_length + 2 * ground_gap
+        ground_pad_height = pad_height + 2 * ground_gap
         ground_pad = Geometry(
             name="ground_pad",
-            polygon=draw.rectangle(ground_pad_width, ground_pad_length, 0, 0),
+            polygon=draw.rectangle(ground_pad_width, ground_pad_height, 0, 0),
             options=dict(subtract=True),
         )
 
@@ -153,29 +160,29 @@ class EdgeInductanceResonator(Component):
         nanowire = Geometry(
             "nanowire",
             draw.LineString([
-                (-nanowire_length / 2, pad_length / 2 - nanowire_width / 2),
-                (nanowire_length / 2, pad_length / 2 - nanowire_width / 2)
+                (-nanowire_length / 2, pad_height / 2 - nanowire_width / 2),
+                (nanowire_length / 2, pad_height / 2 - nanowire_width / 2)
             ]),
             type="junction",
             options=dict(width=nanowire_width),
         )
 
         # Create resonator pad
-        pad = draw.rectangle(pad_width, pad_length, 0, 0)
+        pad = draw.rectangle(pad_width, pad_height, 0, 0)
 
         # Nanowire cutout
         nanowire_gap = draw.rectangle(
             nanowire_length,
             nanowire_gap_width,
             0,
-            pad_length / 2 - nanowire_gap_width / 2,
+            pad_height / 2 - nanowire_gap_width / 2,
         )
         pad = pad.difference(nanowire_gap)
 
         # Finger gaps
         gap_width = 20e-3
 
-        reference_point = (0, +pad_length / 2 - nanowire_gap_width)
+        reference_point = (0, +pad_height / 2 - nanowire_gap_width)
 
         previous_point = None
         for index, point in enumerate(
@@ -183,7 +190,7 @@ class EdgeInductanceResonator(Component):
                 n_pairs=9,
                 gap_width=gap_width,
                 x_tot=pad_width,
-                y_tot=pad_length - nanowire_gap_width,
+                y_tot=pad_height - nanowire_gap_width,
             )
         ):
             point = (point[0] + reference_point[0], -point[1] + reference_point[1])
@@ -215,7 +222,7 @@ class EdgeInductanceResonator(Component):
         # Add port for CPW connection
         self.ports.add(
             port=Port(
-                position=[0, pad_length / 2 + ground_gap],
+                position=[0, pad_height / 2 + ground_gap],
                 direction=np.pi/2,
                 name="DC_probe",
                 width=cpw_width,
@@ -262,21 +269,9 @@ class EdgeInductanceResonator(Component):
         return points
 
 
-class VariableIncaResonator(Component):
+class VariableIncaResonator(Resonator):
     default_options = dict(
-        n_pairs=7,                              # Number of finger pairs
-        nanowire_width="2um",                   # Width of the nano-wire
-        nanowire_length="94um",                 # Length of the nano-wire
-        nanowire_gap_width="100um",              # ground gap from the nano-wire
-        teeth_dimensions=("10um", "40um", "10um"),          # (teeth_width, teeth_length, teeth_gap)
-        # port_width="10um",                       # Width of the resonator port
-        # fillet="0um",                            # Fillet radius (if any)
-        # overdev="0um",                           # Overdevelopment margin
-        # teeth_length_ext="70um",                  # Extra extension for the capacitor fingers
-        ground_gap_width="50um",                 # Gap width between the resonator and incoming line
         center_offset=0,
-        s_ground_size="1.1mm",
-        n_ground_size="1.06mm",
     )
 
     component_metadata = dict(short_name="inca_resonator")
@@ -287,15 +282,11 @@ class VariableIncaResonator(Component):
         nanowire_width,
         nanowire_length,
         nanowire_gap_width,
-        teeth_dimensions,
-        # port_width,
-        # fillet,
-        # overdev,
-        # teeth_length_ext,
-        ground_gap_width,
+        teeth_gap,
+        ground_gap,
         center_offset,
-        s_ground_size,
-        n_ground_size,
+        pad_width,
+        pad_height,
         **kwargs,
     ) -> List[Geometry]:
         """
@@ -312,13 +303,9 @@ class VariableIncaResonator(Component):
         """
 
         # 0) Prepare variables
-
-        # Unpack the tuples (all dimensions in microns)
-        _, _, teeth_gap = teeth_dimensions
-
         center_offset = (-1)**n_pairs * center_offset
 
-        x_max = n_ground_size - ground_gap_width - nanowire_length
+        x_max = pad_width - nanowire_length
 
         x_reference = center_offset * x_max / 2
 
@@ -327,7 +314,10 @@ class VariableIncaResonator(Component):
         # 1) Ground cutout
         ground_pad = Geometry(
             name="ground_pad",
-            polygon=draw.rectangle(s_ground_size, s_ground_size, 0, 0),
+            polygon=draw.rectangle(
+                pad_width + ground_gap, pad_height + ground_gap,
+                 0, 0,
+            ),
             options=dict(subtract=True),
         )
 
@@ -349,7 +339,7 @@ class VariableIncaResonator(Component):
         )
 
         # 3) Resonator pad
-        pad = draw.rectangle(n_ground_size, n_ground_size, 0, 0)
+        pad = draw.rectangle(pad_width, pad_height, 0, 0)
 
         nanowire_gap = draw.rectangle(
             nanowire_length, nanowire_gap_width, x_reference, 0,
@@ -360,8 +350,8 @@ class VariableIncaResonator(Component):
         # 1) Create a long list of snaking `raw_points`
         raw_points = generate_snaking_points(
             n_pairs=n_pairs,
-            x_tot=n_ground_size,
-            y_tot=n_ground_size,
+            x_tot=pad_width,
+            y_tot=pad_height,
             center_offset=center_offset,
             wire_gap=nanowire_gap_width,
             teeth_gap=teeth_gap,
@@ -386,19 +376,12 @@ class VariableIncaResonator(Component):
         return [pad, nanowire, ground_pad]
 
 
-class IncaResonator(Component):
+class IncaResonator(Resonator):
     """An interdigitated resonator component with triangular finger pattern."""
 
     default_options = Dict(
-        n_pairs=18,                              # Number of finger pairs
-        wire_dimensions=("2um", "94um", "100um"),  # (width, length, gap)
-        teeth_dimensions=("10um", "40um", "10um"),  # (width, length, gap)
-        pad_height="850um",                  # Height of the resonator pad
-        pad_width="1440um",                  # Width of the resonator pad
-        fillet="10um",                       # Fillet radius for corners
-        ratio=1.0,                           # Ratio for end finger lengths (0-1)
-        teeth_length_ext="70um",             # Extra extension for fingers
-        ground_gap_width="50um",             # Gap width between resonator and ground
+        # fillet="10um",                       # Fillet radius for corners
+        # teeth_length_ext="70um",             # Extra extension for fingers
         R=0.75,                              # Remove percetage of last tooth
     )
 
@@ -409,27 +392,23 @@ class IncaResonator(Component):
     def generate_geometries(
         self,
         n_pairs,
-        wire_dimensions,
-        teeth_dimensions,
+        teeth_gap,
         pad_height,
         pad_width,
-        ratio,
-        teeth_length_ext,
-        ground_gap_width,
+        ground_gap,
+        nanowire_width,
+        nanowire_length,
+        nanowire_gap_width,
         R,
         **kwargs,
     ):
         """Generate the geometry for the Inca resonator."""
 
-        # Unpack dimensions
-        wire_width, wire_length, wire_gap = wire_dimensions
-        teeth_width, teeth_length, teeth_gap = teeth_dimensions
-
         # 1) Ground cutout
         ground_pad = Geometry(
             name="ground_pad",
             polygon=draw.rectangle(
-                pad_width + ground_gap_width, pad_height + ground_gap_width,
+                pad_width + ground_gap, pad_height + ground_gap,
                 0, 0,
             ),
             options=dict(subtract=True),
@@ -444,7 +423,7 @@ class IncaResonator(Component):
             x_tot=pad_height,
             y_tot=pad_height,
             center_offset=0.0,
-            wire_gap=wire_gap,
+            wire_gap=nanowire_gap_width,
             teeth_gap=teeth_gap,
         )
 
@@ -463,18 +442,18 @@ class IncaResonator(Component):
         pad = pad.difference(top_gap)
 
         # Create wire gap
-        wire_gap_geom = draw.rectangle(wire_length, wire_gap, 0, 0)
+        wire_gap_geom = draw.rectangle(nanowire_length, nanowire_gap_width, 0, 0)
         pad = pad.difference(wire_gap_geom)
 
         # Create nanowire
         nanowire = Geometry(
             "nanowire",
             draw.LineString([
-                (-wire_length/2, 0),
-                (wire_length/2, 0)
+                (-nanowire_length/2, 0),
+                (nanowire_length/2, 0)
             ]),
             type="junction",
-            options=dict(width=wire_width),
+            options=dict(width=nanowire_width),
         )
 
         # Create pad fingers
@@ -488,7 +467,7 @@ class IncaResonator(Component):
             finger = draw.rectangle(
                 pad_width,
                 finger_width,
-                + (pad_width + wire_length + 3*finger_spacing)/2 + x_pos,
+                + (pad_width + nanowire_length + 3*finger_spacing)/2 + x_pos,
                 y_pos + finger_spacing,
             )
             if top_right_fingers is None:
@@ -518,17 +497,9 @@ class IncaResonator(Component):
         return [pad, nanowire, ground_pad]
 
 
-class BraggResonator(Component):
+class BraggResonator(Resonator):
     default_options = dict(
-        n_pairs=7,                              # Number of finger pairs
-        nanowire_width="2um",                   # Width of the nano-wire
-        nanowire_length="24um",                 # Length of the nano-wire
-        nanowire_gap_width="50um",              # ground gap from the nano-wire
-        teeth_dimensions=("10um", "40um", "10um"),  # (width, length, gap)
-        ground_gap_width="50um",  # Gap width between the resonator and incoming line
         center_offset=0,
-        pad_height="1.2mm",
-        pad_width="0.94mm",
         incoming_line_width="4um",
     )
 
@@ -540,12 +511,12 @@ class BraggResonator(Component):
         nanowire_width,
         nanowire_length,
         nanowire_gap_width,
-        teeth_dimensions,
+        teeth_gap,
         # port_width,
         # fillet,
         # overdev,
         # teeth_length_ext,
-        ground_gap_width,
+        ground_gap,
         center_offset,
         pad_height,
         pad_width,
@@ -566,10 +537,6 @@ class BraggResonator(Component):
         """
 
         # 0) Prepare variables
-
-        # Unpack the tuples (all dimensions in microns)
-        _, _, teeth_gap = teeth_dimensions
-
         center_offset = (-1)**n_pairs * center_offset
 
         x_reference = center_offset * pad_width / 2
@@ -583,9 +550,9 @@ class BraggResonator(Component):
             0, 0,
         )
         incoming_line_ground_cutout = draw.rectangle(
-            ground_gap_width,
+            ground_gap,
             pad_height + 2 * teeth_gap,
-            - pad_width/2 - ground_gap_width/2, 0
+            - pad_width/2 - ground_gap/2, 0
         )
         ground_cutout = ground_cutout.union(incoming_line_ground_cutout)
 
@@ -620,9 +587,9 @@ class BraggResonator(Component):
         )
 
         incoming_line = draw.rectangle(
-            ground_gap_width,
+            ground_gap,
             incoming_line_width,
-            - pad_width/2 - ground_gap_width/2, 0
+            - pad_width/2 - ground_gap/2, 0
         )
 
         pad = pad.difference(nanowire_gap)
@@ -664,7 +631,7 @@ class BraggResonator(Component):
 
         self.ports.add(
             port=Port(
-                position=[-pad_width / 2 - ground_gap_width - teeth_gap, 0],
+                position=[-pad_width / 2 - ground_gap - teeth_gap, 0],
                 direction=np.pi,
                 name="drive",
                 width=incoming_line_width,
