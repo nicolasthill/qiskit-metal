@@ -107,7 +107,7 @@ def generate_finger_gap(
     return joint_gap
 
 
-class Resonator(Component):
+class EdgeInductanceResonator(Component):
     """A resonator component for wirebond connections to on-chip coplanar waveguides."""
 
     default_options = Dict(
@@ -262,7 +262,7 @@ class Resonator(Component):
         return points
 
 
-class IncaResonatorShortedMasked(Component):
+class VariableIncaResonator(Component):
     default_options = dict(
         n_pairs=7,                              # Number of finger pairs
         nanowire_width="2um",                   # Width of the nano-wire
