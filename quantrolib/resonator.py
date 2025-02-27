@@ -518,6 +518,164 @@ class IncaResonator(Component):
         return [pad, nanowire, ground_pad]
 
 
+class BraggResonator(Component):
+    default_options = dict(
+        n_pairs=7,                              # Number of finger pairs
+        nanowire_width="2um",                   # Width of the nano-wire
+        nanowire_length="24um",                 # Length of the nano-wire
+        nanowire_gap_width="50um",              # ground gap from the nano-wire
+        teeth_dimensions=("10um", "40um", "10um"),  # (width, length, gap)
+        ground_gap_width="50um",  # Gap width between the resonator and incoming line
+        center_offset=0,
+        pad_height="1.2mm",
+        pad_width="0.94mm",
+        incoming_line_width="4um",
+    )
+
+    component_metadata = dict(short_name="inca_resonator")
+
+    def generate_geometries(
+        self,
+        n_pairs,
+        nanowire_width,
+        nanowire_length,
+        nanowire_gap_width,
+        teeth_dimensions,
+        # port_width,
+        # fillet,
+        # overdev,
+        # teeth_length_ext,
+        ground_gap_width,
+        center_offset,
+        pad_height,
+        pad_width,
+        incoming_line_width,
+        **kwargs,
+    ) -> List[Geometry]:
+        """
+        Generate all geometries for the Inca resonator.
+
+        The resonator consists of:
+          1. An absolute bounding box (the resonator pad)
+          2. A ground gap connecting to the incoming line
+          3. Two meandering finger gap geometries (top and bottom)
+          4. A gap surrounding the inductive nanowire (wire gap)
+          5. The nanowire itself
+
+        Ports are created and added to self.ports.
+        """
+
+        # 0) Prepare variables
+
+        # Unpack the tuples (all dimensions in microns)
+        _, _, teeth_gap = teeth_dimensions
+
+        center_offset = (-1)**n_pairs * center_offset
+
+        x_reference = center_offset * pad_width / 2
+
+        central_position = [x_reference, 0.0]
+
+        # 1) Ground cutout
+        ground_cutout = draw.rectangle(
+            pad_width + 2 * teeth_gap,
+            pad_height + 2 * teeth_gap,
+            0, 0,
+        )
+        incoming_line_ground_cutout = draw.rectangle(
+            ground_gap_width,
+            pad_height + 2 * teeth_gap,
+            - pad_width/2 - ground_gap_width/2, 0
+        )
+        ground_cutout = ground_cutout.union(incoming_line_ground_cutout)
+
+        ground_pad = Geometry(
+            name="ground_pad",
+            polygon=ground_cutout,
+            options=dict(subtract=True),
+        )
+
+        # 2) Create nano-wire
+        nanowire = Geometry(
+            "nanowire",
+            draw.LineString([
+                (
+                    -nanowire_length / 2 + central_position[0],
+                    central_position[1],
+                ),
+                (
+                    nanowire_length / 2 + central_position[0],
+                    central_position[1],
+                )
+            ]),
+            type="junction",
+            options=dict(width=nanowire_width),
+        )
+
+        # 3) Resonator pad
+        pad = draw.rectangle(pad_width, pad_height, 0, 0)
+
+        nanowire_gap = draw.rectangle(
+            nanowire_length, nanowire_gap_width, x_reference, 0,
+        )
+
+        incoming_line = draw.rectangle(
+            ground_gap_width,
+            incoming_line_width,
+            - pad_width/2 - ground_gap_width/2, 0
+        )
+
+        pad = pad.difference(nanowire_gap)
+        pad = pad.union(incoming_line)
+
+        # 1) Create a long list of snaking `raw_points`
+        raw_points = generate_snaking_points(
+            n_pairs=n_pairs,
+            x_tot=pad_width,
+            y_tot=pad_height,
+            center_offset=center_offset,
+            wire_gap=nanowire_gap_width,
+            teeth_gap=teeth_gap,
+            wire_length=nanowire_length,
+        )
+
+        bottom_gap = generate_finger_gap(
+            n_pairs,
+            raw_points,
+            (0, 0),
+            x_reference,
+            flip=False,
+            teeth_gap=teeth_gap,
+            nanowire_gap_width=nanowire_gap_width,
+            R=1.0,  # TODO: otherwise the last tooth is removed falsely for odd n_pairs
+        )
+        top_gap = scale(bottom_gap, xfact=1.0, yfact=-1.0, origin=(0, 0))
+
+        pad = pad.difference(bottom_gap)
+        pad = pad.difference(top_gap)
+
+        # Ground the pad
+        metal_to_ground = draw.rectangle(
+            teeth_gap,
+            pad_height - (raw_points[-1][1] - raw_points[-2][1]) - 31.15e-3,
+            +pad_width/2 + teeth_gap/2, 0
+        )
+        pad = pad.union(metal_to_ground)
+
+        pad = Geometry("pad", pad)
+
+        self.ports.add(
+            port=Port(
+                position=[-pad_width / 2 - ground_gap_width - teeth_gap, 0],
+                direction=np.pi,
+                name="drive",
+                width=incoming_line_width,
+            ),
+        )
+
+        return [pad, nanowire, ground_pad]
+
+
 if __name__ == "__main__":
     import time
 
