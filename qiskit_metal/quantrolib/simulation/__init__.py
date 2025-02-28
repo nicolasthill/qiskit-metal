@@ -1,2 +1,2 @@
-from .configs import Config, RenderConfig, SimulationConfig, ReportConfig, EMSetup
+from .configs import Config, RenderConfig,  ReportConfig, EMSetup
 from .ansys import ANSYS

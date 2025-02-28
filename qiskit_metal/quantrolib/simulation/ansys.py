@@ -24,14 +24,14 @@ class ANSYS:
 
         # Configurations
         self.render_configs: Dict[str, RenderConfig] = {}
-        self.simulation_configs: Dict[str, SimulationConfig] = {}
         self.report_configs: Dict[str, ReportConfig] = {}
 
         self._configs: Dict[str, Dict[str, str | Config]] = {
             "render": {"configs": {}, "current": None},
-            "simulation": {"configs": {}, "current": None},
             "report": {"configs": {}, "current": None},
         }
+
+        self.current_setup = None
 
         self.add_configs(configs, select_afterwards=True)
 
@@ -106,21 +106,15 @@ class ANSYS:
         log.info("##### RENDER SUCCESSFULL #####")
 
     def run_simulation(self) -> None:
-        config: SimulationConfig = self._get_current_config("simulation")
 
+        if self.current_setup is None:
+            raise ValueError("No setup selected. Please select a setup in the render config first.")
+
+        log.info(f"Current setup: {self.current_setup}")
         if self.renderer is None:
             raise ValueError("No renderer found. Please run the render step first.")
-
-        # Initialize simulation parameters.
-        self.renderer.initialize_eigenmode(
-            name=config.name,
-            min_freq_ghz=config.min_freq_ghz,
-            n_modes=config.n_modes,
-            max_delta_f=config.max_delta_f,
-            max_passes=config.max_passes,
-        )
-        self.renderer.activate_ansys_setup(config.name)
-        self.renderer.analyze_setup(config.name)
+        self.renderer.activate_ansys_setup(self.current_setup)
+        self.renderer.analyze_setup(self.current_setup)
         log.info("##### SIMULATION SUCCESSFULL #####")
 
     def run_report(self) -> None:
@@ -165,10 +159,11 @@ class ANSYS:
                 renderer.rdesktop.set_active_project(config.project_name)
                 project = renderer.rdesktop.get_active_project()
             else:
-                if Path(config.project_path).exists():
+                if Path(config.project_path).exists():  # open existing project
                     project = renderer.rdesktop.open_project(config.project_path)
-                else:
-                    raise ValueError(f"Project's path {config.project_path}' does not exist.")
+                else:   # create new project
+                    project = renderer.rdesktop.new_project()
+                    project.save(path=config.project_path)
 
         # Open the design
         if config.design_name in project.get_design_names():
@@ -193,6 +188,13 @@ class ANSYS:
 
             if setup.name not in setup_names:
                 design.create_em_setup(**setup.__dict__)
+            else:
+                existing_setup = design.get_setup(setup.name)
+                for attr, value in setup.__dict__.items():
+                    if attr != "name":
+                        setattr(existing_setup, attr, value)
+        self.current_setup = setup.name
+
 
         # Inform the renderer about the project and design.
         try:

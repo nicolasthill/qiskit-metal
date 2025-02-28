@@ -7,15 +7,15 @@ from qiskit_metal.designs import DesignPlanar
 
 @dataclass
 class EMSetup:
-    name="Setup"
-    min_freq_ghz=1
-    n_modes=1
-    max_delta_f=0.1
-    max_passes=10
-    min_passes=1
-    min_converged=1
-    pct_refinement=30
-    basis_order=-1
+    name: str = "Setup"
+    min_freq_ghz: float = 1
+    n_modes: int = 1
+    max_delta_f: float = 0.1
+    max_passes: int = 10
+    min_passes: int = 1
+    min_converged: int = 1
+    pct_refinement: int = 30
+    basis_order: int = -1
 
 
 @dataclass
@@ -47,17 +47,6 @@ class RenderConfig(Config):
     @property
     def project_path(self) -> str:
         return Path(self.project_dir) / (self.project_name + ".aedt")
-
-
-@dataclass
-class SimulationConfig(Config):
-    min_freq_ghz: float
-    n_modes: int
-    max_delta_f: float
-    max_passes: int
-
-    _type: str = "simulation"
-
 
 @dataclass
 class ReportConfig(Config):
