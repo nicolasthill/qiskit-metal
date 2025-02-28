@@ -143,6 +143,7 @@ class EdgeInductanceResonator(Resonator):
         nanowire_gap_width,
         cpw_width,
         cpw_gap,
+        teeth_gap,
         **kwargs,
     ):
         """Generate the geometry for the wirebond resonator."""
@@ -180,15 +181,13 @@ class EdgeInductanceResonator(Resonator):
         pad = pad.difference(nanowire_gap)
 
         # Finger gaps
-        gap_width = 20e-3
-
         reference_point = (0, +pad_height / 2 - nanowire_gap_width)
 
         previous_point = None
         for index, point in enumerate(
             self.generate_raw_points(
                 n_pairs=9,
-                gap_width=gap_width,
+                teeth_gap=teeth_gap,
                 x_tot=pad_width,
                 y_tot=pad_height - nanowire_gap_width,
             )
@@ -203,12 +202,12 @@ class EdgeInductanceResonator(Resonator):
 
                 if index % 2 == 1:  # dy
                     gap = draw.rectangle(
-                        gap_width, point[1] - previous_point[1] - gap_width, *rect_point
+                        teeth_gap, point[1] - previous_point[1] - teeth_gap, *rect_point
                     )
                 elif index % 2 == 0:  # dx
                     gap = draw.rectangle(
-                        point[0] - previous_point[0] + gap_width,
-                        -gap_width,
+                        point[0] - previous_point[0] + teeth_gap,
+                        -teeth_gap,
                         *rect_point,
                     )
                 else:
@@ -235,16 +234,16 @@ class EdgeInductanceResonator(Resonator):
     def generate_raw_points(
         self,
         n_pairs,
-        gap_width,
+        teeth_gap,
         x_tot: float,
         y_tot: float,
     ) -> List[Tuple[float, float]]:
 
-        y_max = y_tot + gap_width / 2
+        y_max = y_tot + teeth_gap / 2
         y_spacing = y_max / (n_pairs + 1)
 
-        finger_width = y_spacing - gap_width
-        x_max = x_tot - gap_width - finger_width * 2
+        finger_width = y_spacing - teeth_gap
+        x_max = x_tot - teeth_gap - finger_width * 2
 
         y_spacing = y_max / (n_pairs + 1)
 
