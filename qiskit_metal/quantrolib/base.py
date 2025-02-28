@@ -55,7 +55,7 @@ class Design:
         """
         self._design = design if design is not None else DesignPlanar()
         self._design.overwrite_enabled = True
-        self._gui = gui if gui is not None else MetalGUI(self._design)
+        self._gui = gui
 
         self.gds_renderer = self._design.renderers.gds
 
@@ -71,11 +71,14 @@ class Design:
         self.gds_renderer.export_to_gds(GDS_DIRECTORY / file)
 
     def __del__(self):
-
         self._gui.main_window.force_close = True
         self._gui.main_window.close()
 
     def draw(self):
+        if self._gui is None:
+            self._gui = MetalGUI(self._design)
+        else:
+            self._gui.set_design(self._design)
         self._gui.rebuild()
         self.show()
 
@@ -84,6 +87,8 @@ class Design:
         self._gui.main_window.close()
 
     def show(self):
+        if self._gui is None:
+            self.draw()
         self._gui.autoscale()
         self._gui.show()
 
