@@ -5,7 +5,7 @@ import pyEPR as epr
 from pyEPR.ansys import HfssApp
 
 from qiskit_metal.renderers.renderer_ansys.hfss_renderer import QHFSSRenderer
-from qiskit_metal.quantrolib.simulation import Config, RenderConfig, SimulationConfig, ReportConfig, EMSetup
+from qiskit_metal.quantrolib.simulation import Config, RenderConfig, ReportConfig, EMSetup
 
 # Configure logging
 import logging
@@ -96,9 +96,13 @@ class ANSYS:
 
         # Clean the design and render it.
         self.renderer.clean_active_design()
-        self.renderer.render_design(
-            open_pins=config.open_pins, port_list=config.port_list,
-        )
+        try:
+            self.renderer.render_design(
+                open_pins=config.open_pins, port_list=config.port_list,
+            )
+        except Exception as e:
+            log.error(f"Qiskit-Metal encountered an error while rendering the design: {e}")
+            raise e
         log.info("##### RENDER SUCCESSFULL #####")
 
     def run_simulation(self) -> None:
