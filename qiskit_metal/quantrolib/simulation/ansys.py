@@ -1,13 +1,17 @@
 from typing import Any, Dict, List
+from pathlib import Path
+
+import pyEPR as epr
+from pyEPR.ansys import HfssApp
 
 from qiskit_metal.renderers.renderer_ansys.hfss_renderer import QHFSSRenderer
-
-from quantrolib.simulation import Config, RenderConfig, SimulationConfig, ReportConfig
+from qiskit_metal.quantrolib.simulation import Config, RenderConfig, SimulationConfig, ReportConfig, EMSetup
 
 # Configure logging
 import logging
 from qiskit_metal.quantrolib.logger import logger as log
 
+log.setLevel(logging.DEBUG)
 
 class ANSYS:
     def __init__(
@@ -82,60 +86,7 @@ class ANSYS:
     def run_render(self) -> None:
         config: RenderConfig = self._get_current_config("render")
 
-        if config.design_name is None:
-            log.info(
-                f"No design name provided. Automatically using '{config.design.name}'."
-            )
-            config.design_name = config.design.name
-
-        # Rebuild the design and get the renderer.
-        design = config.design
-        design.rebuild()
-
-        self.renderer: QHFSSRenderer = config.design.renderers.hfss
-
-        # Update renderer options with project and design information
-        self.renderer._options.update({
-            "project_path": config.project_path,
-            "project_name": config.project_name,
-            "design_name": config.design_name,
-        })
-
-        try:
-            self.renderer.start()
-        except Exception as e:
-            # Check if the exception message indicates that the design was not found.
-            if "Did you provide the correct design name?" in str(e):
-                self.renderer.new_ansys_design(config.design_name, config.mode)
-                log.info(f"Created new design '{config.design_name}' ignore the error.")
-            else:
-                raise
-
-        pinfo = self.renderer._pinfo
-
-        # --- Validate the project connection ---
-        if config.project_name is None:
-            log.info(
-                f"No project name provided. Automatically connected to project "
-                f"{pinfo.project_name} at {pinfo.project_path}."
-            )
-        elif config.project_name != pinfo.project_name:
-            raise ValueError(
-                f"The loaded project '{pinfo.project_name}' does not match the one "
-                f"provided: '{config.project_name}'."
-            )
-
-        # --- Ensure a design is loaded ---
-        if pinfo.design is None:
-            log.info(f"Creating new design '{config.design_name}'")
-            self.renderer.new_ansys_design(config.design_name, config.mode)
-
-        # --- Validate the design connection ---
-        if config.design_name != pinfo.design_name:
-            raise ValueError(
-                f"The loaded design '{pinfo.design_name}' does not match the provided "
-                f"design name '{config.design_name}'."
-            )
+        self.renderer = self.initiate_renderer(config)
 
         # Configure meshing
         if config.max_mesh_length_jj is not None:
@@ -179,3 +130,87 @@ class ANSYS:
         self.run_render()
         self.run_simulation()
         self.run_report()
+
+    def initiate_renderer(self, config: RenderConfig) -> QHFSSRenderer:
+        # Rebuild the design and get the renderer.
+        design = config.design
+        design.rebuild()
+
+        renderer: QHFSSRenderer = config.design.renderers.hfss
+
+        # Connect to Ansys
+        renderer.rapp = HfssApp()
+        renderer.rdesktop = renderer.rapp.get_app_desktop()
+
+        # Set the project directory
+        if config.project_dir is None:
+            config.project_dir = renderer.rdesktop.project_directory
+        else:
+            if not Path(config.project_dir).exists():
+                raise ValueError(f"Project directory '{config.project_dir}' does not exist.")
+            renderer.rdesktop.project_directory = config.project_dir            
+        
+        # Open the project
+        if config.project_name is None:
+            log.info("No project name provided. Creating new project.")
+            project = renderer.rdesktop.new_project()
+            config.project_name = project.name
+            project.save(path=config.project_path)
+        else:
+            if config.project_name in renderer.rdesktop.get_project_names():
+                renderer.rdesktop.set_active_project(config.project_name)
+                project = renderer.rdesktop.get_active_project()
+            else:
+                if Path(config.project_path).exists():
+                    project = renderer.rdesktop.open_project(config.project_path)
+                else:
+                    raise ValueError(f"Project's path {config.project_path}' does not exist.")
+
+        # Open the design
+        if config.design_name in project.get_design_names():
+            design = project.get_design(config.design_name)
+        else:
+            if config.design_name not in project.get_design_names():
+                message = f"Design '{config.design_name}' does not exist."
+            else:
+                message = "No design name provided."
+            log.info(f"{message} Creating new design.")
+            design = project.new_design(
+                design_name=config.design_name,
+                solution_type=config.mode,
+            )
+        
+        # Open the setup
+        if not config.setups:
+            config.setups = [EMSetup()]
+
+        for setup in config.setups:
+            setup_names = design.get_setup_names()
+
+            if setup.name not in setup_names:
+                design.create_em_setup(**setup.__dict__)
+
+        # Inform the renderer about the project and design.
+        try:
+            renderer._pinfo = epr.ProjectInfo(
+                do_connect=True,
+                project_path=config.project_dir,
+                project_name=config.project_name,
+                design_name=config.design_name,
+                setup_name=config.design_name,
+            )
+        except Exception as e:
+            if "Valid directory, but invalid project filename. 😭 Not found!" in str(e):
+                project.save(path=config.project_path)
+                renderer._pinfo = epr.ProjectInfo(
+                    do_connect=True,
+                    project_path=config.project_dir,
+                    project_name=config.project_name,
+                    design_name=config.design_name
+                )
+            else:
+                raise e        
+
+        renderer.initiated = True
+
+        return renderer
