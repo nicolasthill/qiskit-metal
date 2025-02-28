@@ -13,11 +13,11 @@ Chip types
 from pathlib import Path
 from typing import Optional, Tuple
 
-from quantrolib.base import Design
-from quantrolib.component import Launcher
-from quantrolib.utilities import load_yaml
+from qiskit_metal.quantrolib.base import Design
+from qiskit_metal.quantrolib.component import Launcher
+from qiskit_metal.quantrolib.utilities import load_yaml
 
-from logger import logger as log
+from qiskit_metal.quantrolib.logger import logger as log
 
 from qiskit_metal.qlibrary.core import QComponent
 
@@ -281,7 +281,7 @@ class SMASH12(Chip):
 
 
 if __name__ == "__main__":
-    from quantrolib.chip import JAWS, SMASH2, SMASH12
+    from qiskit_metal.quantrolib.chip import JAWS, SMASH2, SMASH12
 
     jaws_chip = JAWS()
     jaws_chip.draw()

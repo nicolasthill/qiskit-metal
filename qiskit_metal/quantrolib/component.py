@@ -1,8 +1,8 @@
 from qiskit_metal import draw, Dict
 import numpy as np
 
-from quantrolib.base import Component, Geometry
-from quantrolib.port import Port
+from qiskit_metal.quantrolib.base import Component, Geometry
+from qiskit_metal.quantrolib.port import Port
 
 
 class Launcher(Component):
@@ -107,8 +107,8 @@ class Launcher(Component):
 if __name__ == "__main__":
     import time
 
-    from quantrolib.chip import JAWS
-    from quantrolib.component import Launcher  # noqa: F811
+    from qiskit_metal.quantrolib.chip import JAWS
+    from qiskit_metal.quantrolib.component import Launcher  # noqa: F811
 
     chip = JAWS()
 

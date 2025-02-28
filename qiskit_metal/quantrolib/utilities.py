@@ -6,7 +6,7 @@ from pathlib import Path
 # external packages
 import yaml
 
-from logger import logger
+from qiskit_metal.quantrolib.logger import logger
 
 
 def load_yaml(file_path: Path) -> dict:

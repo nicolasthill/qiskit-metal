@@ -16,7 +16,7 @@ from qiskit_metal import draw
 from qiskit_metal import MetalGUI, QComponent
 from qiskit_metal.designs import DesignPlanar
 
-from quantrolib.port import Ports
+from qiskit_metal.quantrolib.port import Ports
 
 GDS_DIRECTORY = Path.cwd() / "gds_files"
 GDS_DIRECTORY.mkdir(exist_ok=True)
