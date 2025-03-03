@@ -24,9 +24,12 @@ from qiskit_metal.qlibrary.core import QComponent
 
 class Chiplet(Design):
 
-    def __init__(self, size_x: str, size_y: str, **kwargs) -> None:
+    def __init__(self, size_x: str, size_y: Optional[str] = None, **kwargs) -> None:
         """Initializes the Chip class."""
         super().__init__(**kwargs)
+
+        if size_y is None:
+            size_y = size_x
 
         # chip characteristics
         self._design.chips.main = {
@@ -38,10 +41,10 @@ class Chiplet(Design):
                 "center_y": "0.0mm",
                 "center_z": "0.0mm",
                 "size_x": size_x,
-                "size_y": size_x,
-                "size_z": "-750um",
-                "sample_holder_top": "890um",
-                "sample_holder_bottom": "1650um",
+                "size_y": size_y,
+                "size_z": "-300um",
+                "sample_holder_top": "2000um",
+                "sample_holder_bottom": "2000um",
             },
         }
 

@@ -98,7 +98,7 @@ class ANSYS:
         self.renderer.clean_active_design()
         try:
             self.renderer.render_design(
-                open_pins=config.open_pins, port_list=config.port_list,
+                open_pins=config.open_pins, port_list=config.port_list, box_plus_buffer=False
             )
         except Exception as e:
             log.error(f"Qiskit-Metal encountered an error while rendering the design: {e}")
