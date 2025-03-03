@@ -115,7 +115,7 @@ class Resonator(Component):
         n_pairs=18,                     # Number of finger pairs
         nanowire_width="2um",           # Width of the nano-wire
         nanowire_length="94um",         # Length of the nano-wire
-        nanowire_gap_width="100um",     # ground gap from the nano-wire
+        nanowire_gap_width="50um",     # ground gap from the nano-wire
         ground_gap="25um",              # Ground gap surrounding the resonator pad
         teeth_gap="10um",               # Gap between the teeth
     )
@@ -498,9 +498,13 @@ class IncaResonator(Resonator):
 
 class BraggResonator(Resonator):
     default_options = dict(
+        pad_width="950um",              # Width of the resonator pad
+        pad_height="1220um",             # Length of the resonator pad
+        nanowire_length="24um",         # Length of the nano-wire
+        ground_gap="10um",              # Ground gap surrounding the resonator pad
         center_offset=0,
         incoming_line_width="4um",     # set to 0 if no incoming line
-        incoming_line_length="100um",  # fixes the extra gap to ground
+        incoming_line_length="0um",  # fixes the extra gap to ground
         ground_outgoing_pad=True,  # whether to ground the right pad
     )
 
